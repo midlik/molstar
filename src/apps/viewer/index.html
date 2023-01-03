@@ -109,6 +109,8 @@
 
                 var modelArchive = getParam('model-archive', '[^&]+').trim();
                 if (modelArchive) viewer.loadModelArchive(modelArchive);
+
+                viewer.loadStructureFromUrl('https://www.ebi.ac.uk/pdbe/entry-files/download/1tqn.bcif', 'mmcif', true);
             });
         </script>
         <!-- __MOLSTAR_ANALYTICS__ -->
