@@ -2,20 +2,23 @@
 // // Build: npm run build-tsc
 // // Run:   node lib/commonjs/cli/pdbe-images x
 
+import { ArgumentParser } from 'argparse';
+import * as fs from 'fs';
 import * as selenium from 'selenium-webdriver';
 import { Options as FirefoxOptions } from 'selenium-webdriver/firefox';
 
-import { ArgumentParser } from 'argparse';
 import { Download, RawData } from '../../mol-plugin-state/transforms/data';
 import { PluginCommands } from '../../mol-plugin/commands';
 import { PluginContext } from '../../mol-plugin/context';
-
-import * as fs from 'fs';
 import { sleep } from '../../mol-util/sleep';
+
+import { executeScript } from './scripting/master';
+import { scripts } from './scripting/scripts';
+
 // import * as puppeteer from 'puppeteer';
 // import { download } from '../../mol-util/download';
 
-[selenium, Download, RawData, PluginCommands, PluginContext, fs, sleep];
+[selenium, Download, RawData, PluginCommands, PluginContext, fs, sleep, FirefoxOptions, scripts, executeScript]; // avoid unused variable errors
 
 
 interface Args {
@@ -84,30 +87,26 @@ function parseArguments(): Args {
 async function trySelenium() {
     const opts = new FirefoxOptions();
     opts.addArguments('--headless');
-    const browser = new selenium.Builder().forBrowser(selenium.Browser.FIREFOX).setFirefoxOptions(opts).build();
-    // await browser.get('http://example.com');
-    // await browser.get('https://molstar.org/viewer/?snapshot-url=https%3A%2F%2Fmolstar.org%2Fdemos%2Fstates%2Fcytochromes.molx&snapshot-url-type=molx');
-    await browser.get('file:///home/adam/Workspace/CellStar/molstar/build/viewer/index.html');
-    console.log('title', await browser.getTitle());
-    await sleep(5000);
-    const screenshot = await browser.takeScreenshot();
-    fs.writeFileSync('/home/adam/test-selenium.png', screenshot, 'base64');
-    await browser.quit(); 
+    const driver = new selenium.Builder().forBrowser(selenium.Browser.FIREFOX).setFirefoxOptions(opts).build();
+    // const driver = new selenium.Builder().forBrowser(selenium.Browser.CHROME).build();
+
+    await driver.get('file:///home/adam/Workspace/CellStar/molstar/build/viewer/index.html');
+    const res1 = await executeScript(driver, scripts.s1, '1og5');
+    if (res1.error === null) {
+        // fs.writeFileSync('/home/adam/test-state.molj', res1.result.molj);
+        // fs.writeFileSync('/home/adam/test-image.png', res1.result.image, 'base64');
+        // console.log('res1', res1.result.image);
+    }
+    console.log('res1', res1);
+    // const screenshot = await driver.takeScreenshot();
+    // fs.writeFileSync('/home/adam/test-selenium.png', screenshot, 'base64');
+    await driver.quit();
 }
 
 async function main(args: Args) {
     console.log(args);
-    // const ctx = new PluginContext({ behaviors: [] });
     // await tryPuppeteer();
     await trySelenium();
-    // // console.log(document);
-    // // console.log(ctx);
-    // // new ViewportScreenshotHelper(ctx).download('/home/adam/blabla.png');
-    // Download;
-    // // const state = ctx.build().toRoot().apply(Download, { url: 'https://www.ebi.ac.uk/pdbe/entry-files/download/1tqn.bcif', isBinary: true });//.commit();
-    // const state = await ctx.build().toRoot().apply(RawData, { data: 'blabladata' }).commit();
-    // if (false) console.log(state);
-    // await PluginCommands.State.Snapshots.DownloadToFile(ctx, { name: 'ahoj', type: 'json' });
 }
 
 

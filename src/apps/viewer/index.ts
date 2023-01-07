@@ -10,3 +10,4 @@ import './favicon.ico';
 import './index.html';
 require('mol-plugin-ui/skin/light.scss');
 export * from './app';
+export * from '../../cli/pdbe-images/scripting/browser';
