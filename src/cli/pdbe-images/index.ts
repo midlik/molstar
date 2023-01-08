@@ -22,12 +22,12 @@ import { scripts } from './scripting/scripts';
 
 
 interface Args {
-    input: string,
+    pdbid: string,
 }
 
 function parseArguments(): Args {
     const parser = new ArgumentParser({ description: 'CLI tool for generating PDBe images of macromolecular models' });
-    parser.add_argument('input', { help: 'Input mmCIF file' });
+    parser.add_argument('pdbid', { help: 'PDB identifier' });
     const args = parser.parse_args();
     return { ...args };
 }
@@ -84,20 +84,22 @@ function parseArguments(): Args {
 // }
 
 
-async function trySelenium() {
+async function trySelenium(args: Args) {
     const opts = new FirefoxOptions();
     opts.addArguments('--headless');
     const driver = new selenium.Builder().forBrowser(selenium.Browser.FIREFOX).setFirefoxOptions(opts).build();
     // const driver = new selenium.Builder().forBrowser(selenium.Browser.CHROME).build();
 
     await driver.get('file:///home/adam/Workspace/CellStar/molstar/build/viewer/index.html');
-    const res1 = await executeScript(driver, scripts.s1, '1og5');
-    if (res1.error === null) {
-        // fs.writeFileSync('/home/adam/test-state.molj', res1.result.molj);
-        // fs.writeFileSync('/home/adam/test-image.png', res1.result.image, 'base64');
-        // console.log('res1', res1.result.image);
+    for (let i = 0; i < 1; i++) {
+        const res1 = await executeScript(driver, scripts.s1, args.pdbid);
+        if (res1.error === null) {
+            // fs.writeFileSync('/home/adam/test-state.molj', res1.result.molj);
+            // fs.writeFileSync('/home/adam/test-image.png', res1.result.image, 'base64');
+            // console.log('res1', res1.result.image);
+        }
+        console.log('res1', res1);
     }
-    console.log('res1', res1);
     // const screenshot = await driver.takeScreenshot();
     // fs.writeFileSync('/home/adam/test-selenium.png', screenshot, 'base64');
     await driver.quit();
@@ -106,7 +108,7 @@ async function trySelenium() {
 async function main(args: Args) {
     console.log(args);
     // await tryPuppeteer();
-    await trySelenium();
+    await trySelenium(args);
 }
 
 
