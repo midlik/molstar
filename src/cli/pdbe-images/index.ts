@@ -19,6 +19,7 @@ import { executeScript } from './scripting/master';
 import { loadStructureCustom, scripts } from './scripting/scripts';
 import { DefaultPluginSpec } from '../../mol-plugin/spec';
 import { HeadlessPluginContext } from './headless-plugin-context';
+import path from 'path';
 
 // import * as puppeteer from 'puppeteer';
 // import { download } from '../../mol-util/download';
@@ -110,12 +111,24 @@ async function trySelenium(args: Args) {
 
 
 async function tryPlugin(args: Args) {
-    const plugin = new HeadlessPluginContext(DefaultPluginSpec());
-    await plugin.init();
-    await loadStructureCustom(plugin, `/home/adam/${args.pdbid}.bcif`);
-    await plugin.saveImage(`/home/adam/${args.pdbid}.png`);
-    await plugin.saveImage(`/home/adam/${args.pdbid}.big.png`, undefined, [1600, 1600]);
-    await plugin.saveStateSnapshot(`/home/adam/${args.pdbid}.molj`);
+    https://www.ebi.ac.uk/pdbe/entry-files/download/2nnj.bcif
+    const rootPath = '/home/adam/Workspace/PDBeImages/data-new';
+    path.join(rootPath, `/home/adam/${args.pdbid}.bcif`);
+    console.time('generate');
+    for (let i = 0; i < 1; i++) {
+        const plugin = new HeadlessPluginContext(DefaultPluginSpec());
+        await plugin.init();
+        await loadStructureCustom(plugin, path.join(rootPath, 'in', `${args.pdbid}.bcif`));
+        // await loadStructureCustom(plugin, path.join(rootPath, 'in', `2nnj.bcif`));
+        await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}.png`));
+        // await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-big.png`), undefined, [1600, 1600]);
+        await plugin.saveStateSnapshot(path.join(rootPath, 'out', `${args.pdbid}.molj`));
+        await plugin.clear();
+        await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-2.png`));
+        await plugin.saveStateSnapshot(path.join(rootPath, 'out', `${args.pdbid}-2.molj`));
+        plugin.dispose();
+    }
+    console.timeEnd('generate');
 }
 
 

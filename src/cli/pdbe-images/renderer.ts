@@ -41,6 +41,7 @@ export class ImageRenderer {
         this.canvas3d = Canvas3D.create({ webgl: this.webgl, input, passes, attribs } as Canvas3DContext, {
             camera: {
                 mode: 'orthographic',
+                // mode: 'perspective',
                 helper: {
                     axes: { name: 'off', params: {} }
                 },
@@ -48,7 +49,7 @@ export class ImageRenderer {
                     name: 'off', params: {}
                 },
                 fov: 90,
-                manualReset: false
+                manualReset: true
             },
             cameraFog: {
                 name: 'on',

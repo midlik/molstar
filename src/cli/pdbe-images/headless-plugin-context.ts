@@ -21,12 +21,20 @@ export class HeadlessPluginContext extends PluginContext {
         if (!this.canvas3d) throw new Error('canvas3d is undefined');
         this.canvas3d.commit(true);
     }
+    /** Render the current plugin state to a PNG file */
     async saveImage(outPath: string, structureSize: StructureSize = StructureSize.Medium, imageSize?: [number, number]) {
+        this.commitCanvas();
         return await this.renderer.createImage(outPath, structureSize, imageSize);
     }
+    /** Save the current plugin state to a MOLJ file */
     saveStateSnapshot(outPath: string) {
+        this.commitCanvas();
         const snapshot = this.managers.snapshot.getStateSnapshot({ params: {} });
         const snapshot_json = JSON.stringify(snapshot, null, 2);
         fs.writeFileSync(outPath, snapshot_json);
+    }
+    /** Remove all nodes from the state tree */
+    async clear(){
+        await this.build().delete(this.state.data.root).commit();
     }
 }
