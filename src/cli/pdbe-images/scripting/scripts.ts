@@ -1,18 +1,19 @@
 import * as fs from 'fs';
 
 import { Viewer } from '../../../apps/viewer';
-import { Download, ParseCif } from '../../../mol-plugin-state/transforms/data';
+import { Sphere3D } from '../../../mol-math/geometry';
+import { Vec3 } from '../../../mol-math/linear-algebra';
+import { Download, ParseCif, RawData } from '../../../mol-plugin-state/transforms/data';
 import { ModelFromTrajectory, StructureComponent, StructureFromModel, TrajectoryFromMmCif } from '../../../mol-plugin-state/transforms/model';
 import { StructureRepresentation3D } from '../../../mol-plugin-state/transforms/representation';
 import { PluginUIContext } from '../../../mol-plugin-ui/context';
+import { PluginCommands } from '../../../mol-plugin/commands';
 import { PluginContext } from '../../../mol-plugin/context';
 import { ViewportScreenshotHelper } from '../../../mol-plugin/util/viewport-screenshot';
 import { Color } from '../../../mol-util/color';
 import { sleep } from '../../../mol-util/sleep';
 
 import { Script } from './types';
-
-[sleep, loadStructureCustom];
 
 
 export const scripts = {
@@ -53,10 +54,12 @@ export const scripts = {
     ),
 };
 
-async function loadStructureCustom(plugin: PluginUIContext, url: string) {
+export async function loadStructureCustom(plugin: PluginContext, url: string) {
+    const data = fs.readFileSync(url); // DEBUG
     const update = plugin.build();
     const structure = update.toRoot()
-        .apply(Download, { url, isBinary: true })
+        .apply(RawData,  { data: data }) // DEBUG
+        // .apply(Download, { url, isBinary: true }) // TODO uncomment
         .apply(ParseCif)
         .apply(TrajectoryFromMmCif)
         .apply(ModelFromTrajectory)
@@ -73,13 +76,18 @@ async function loadStructureCustom(plugin: PluginUIContext, url: string) {
         sizeTheme: { name: 'physical', params: {} },
     });
     await update.commit();
+    plugin.managers.camera.reset();
+    // TODO custom camera position and rotation
+    // plugin.managers.camera.focusSphere(Sphere3D.create(Vec3.create(0,10,10), 20));
+    plugin.canvas3d?.commit(true); // plugin.commitCanvas
+    // await sleep(2000);
 }
 
 function getStateSnapshot(plugin: PluginContext) {
     return JSON.stringify(plugin.managers.snapshot.getStateSnapshot({ params: {} }), null, 2);
 }
 
-async function getImage(plugin: PluginContext, resolution: [number, number]) {
+export async function getImage(plugin: PluginContext, resolution: [number, number]) {
     const helper = plugin.helpers.viewportScreenshot ?? new ViewportScreenshotHelper(plugin);
     helper.values.resolution = { name: 'custom', params: { width: resolution[0], height: resolution[1] } };
     helper.values.transparent = true;

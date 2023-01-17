@@ -2,23 +2,26 @@
 // // Build: npm run build-tsc
 // // Run:   node lib/commonjs/cli/pdbe-images x
 
-import { ArgumentParser } from 'argparse';
 import * as fs from 'fs';
+import { ArgumentParser } from 'argparse';
+import { createElement } from 'react';
+import { createRoot } from 'react-dom/client';
 import * as selenium from 'selenium-webdriver';
 import { Options as FirefoxOptions } from 'selenium-webdriver/firefox';
 
 import { Download, RawData } from '../../mol-plugin-state/transforms/data';
+import { PluginUIContext } from '../../mol-plugin-ui/context';
 import { PluginCommands } from '../../mol-plugin/commands';
 import { PluginContext } from '../../mol-plugin/context';
 import { sleep } from '../../mol-util/sleep';
 
 import { executeScript } from './scripting/master';
-import { scripts } from './scripting/scripts';
+import { loadStructureCustom, scripts } from './scripting/scripts';
+import { DefaultPluginSpec } from '../../mol-plugin/spec';
+import { HeadlessPluginContext } from './headless-plugin-context';
 
 // import * as puppeteer from 'puppeteer';
 // import { download } from '../../mol-util/download';
-
-[selenium, Download, RawData, PluginCommands, PluginContext, fs, sleep, FirefoxOptions, scripts, executeScript]; // avoid unused variable errors
 
 
 interface Args {
@@ -105,11 +108,30 @@ async function trySelenium(args: Args) {
     await driver.quit();
 }
 
-async function main(args: Args) {
-    console.log(args);
-    // await tryPuppeteer();
-    await trySelenium(args);
+
+async function tryPlugin(args: Args) {
+    const plugin = new HeadlessPluginContext(DefaultPluginSpec());
+    await plugin.init();
+    await loadStructureCustom(plugin, `/home/adam/${args.pdbid}.bcif`);
+    await plugin.saveImage(`/home/adam/${args.pdbid}.png`);
+    await plugin.saveImage(`/home/adam/${args.pdbid}.big.png`, undefined, [1600, 1600]);
+    await plugin.saveStateSnapshot(`/home/adam/${args.pdbid}.molj`);
 }
 
 
-main(parseArguments()).then(() => console.log('OK'));
+async function main() {
+    const args = parseArguments();
+    console.log(args);
+    // await tryPuppeteer();
+    // await trySelenium(args);
+    try {
+        await tryPlugin(args);
+        console.log('OK');
+    } catch (ex) {
+        console.log('NOK');
+        throw ex;
+    }
+    return;
+}
+
+main();
