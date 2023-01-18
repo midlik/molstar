@@ -9,6 +9,7 @@ import { UUID } from './uuid';
 import { iterableToArray } from '../mol-data/util';
 import { ajaxGet, DataType, DataResponse, readFromFile } from './data-source';
 import { Task } from '../mol-task';
+import { File_ as File } from './node-workarounds';
 
 export { AssetManager, Asset };
 
@@ -100,7 +101,9 @@ class AssetManager {
                 }
 
                 const data = await ajaxGet({ ...asset, type: 'binary' }).runInContext(ctx);
+                console.log('File:', File);
                 const file = new File([data], 'raw-data');
+                console.log('file', file);
                 this._assets.set(asset.id, { asset, file, refCount: 1 });
                 return Asset.Wrapper(await readFromFile(file, type).runInContext(ctx), asset, this);
             });

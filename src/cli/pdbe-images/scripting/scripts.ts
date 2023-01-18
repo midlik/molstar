@@ -56,11 +56,11 @@ export const scripts = {
 };
 
 export async function loadStructureCustom(plugin: PluginContext, url: string) {
-    const data = fs.readFileSync(url); // DEBUG
+    // const data = fs.readFileSync(url); // DEBUG
     const update = plugin.build();
     const structure = update.toRoot()
-        .apply(RawData, { data: data }) // DEBUG
-        // .apply(Download, { url, isBinary: true }) // TODO uncomment
+        // .apply(RawData, { data: data }) // DEBUG
+        .apply(Download, { url, isBinary: true }) // TODO uncomment
         .apply(ParseCif)
         .apply(TrajectoryFromMmCif)
         .apply(ModelFromTrajectory)

@@ -11,6 +11,8 @@ import { Task, RuntimeContext } from '../mol-task';
 import { unzip, ungzip } from './zip/zip';
 import { utf8Read } from '../mol-io/common/utf8';
 import { AssetManager, Asset } from './assets';
+import { FileReader_ as FileReader, XMLHttpRequest_ as XMLHttpRequest } from './node-workarounds';
+import { XFileReader } from './xfilereader';
 
 // polyfill XMLHttpRequest in node.js
 const XHR = typeof document === 'undefined' ? require('xhr2') as {
@@ -22,6 +24,7 @@ const XHR = typeof document === 'undefined' ? require('xhr2') as {
     readonly OPENED: number;
     readonly UNSENT: number;
 } : XMLHttpRequest;
+
 
 export enum DataCompressionMethod {
     None,
@@ -68,6 +71,13 @@ export function ajaxGet<T extends DataType>(params: AjaxGetParams<T> | string) {
 export type AjaxTask = typeof ajaxGet
 
 function isDone(data: XMLHttpRequest | FileReader) {
+    console.log('document', typeof document);
+    console.log(XHR);
+    // console.log(XMLHttpRequest);
+    console.log(FileReader);
+    console.log(FileReader.DONE);
+    console.log(new FileReader());
+    console.log('Blob', new Blob(['ahoj', 'ppico']).text().then(t=> console.log('text',t)));
     if (data instanceof FileReader) {
         return data.readyState === FileReader.DONE;
     } else if (data instanceof XMLHttpRequest) {
@@ -273,6 +283,7 @@ function ajaxGetInternal<T extends DataType>(title: string | undefined, url: str
         xhttp.send(body);
 
         await ctx.update({ message: 'Waiting for server...', canAbort: true });
+        console.log('ajaxGetInternal', url);
         const req = await readData(ctx, 'Downloading...', xhttp);
         xhttp = void 0; // guard against reuse, help garbage collector
 

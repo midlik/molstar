@@ -111,14 +111,15 @@ async function trySelenium(args: Args) {
 
 
 async function tryPlugin(args: Args) {
-    https://www.ebi.ac.uk/pdbe/entry-files/download/2nnj.bcif
+    // https://www.ebi.ac.uk/pdbe/entry-files/download/2nnj.bcif
     const rootPath = '/home/adam/Workspace/PDBeImages/data-new';
     path.join(rootPath, `/home/adam/${args.pdbid}.bcif`);
     console.time('generate');
     for (let i = 0; i < 1; i++) {
         const plugin = new HeadlessPluginContext(DefaultPluginSpec());
         await plugin.init();
-        await loadStructureCustom(plugin, path.join(rootPath, 'in', `${args.pdbid}.bcif`));
+        // await loadStructureCustom(plugin, path.join(rootPath, 'in', `${args.pdbid}.bcif`));
+        await loadStructureCustom(plugin, `https://www.ebi.ac.uk/pdbe/entry-files/download/${args.pdbid}.bcif`);
         // await loadStructureCustom(plugin, path.join(rootPath, 'in', `2nnj.bcif`));
         await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}.png`));
         // await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-big.png`), undefined, [1600, 1600]);
