@@ -20,7 +20,7 @@ export async function executeScript<A, R>(driver: ThenableWebDriver, script: Scr
     }
     console.log('execute', scriptName);
     const molstar = undefined as any; // just for TypeScript
-    let result: ScriptResult<R> = await driver.executeScript((scriptName_: string, args_: A) => molstar.runScriptInBrowser(scriptName_, args_), scriptName, args);
+    const result: ScriptResult<R> = await driver.executeScript((scriptName_: string, args_: A) => molstar.runScriptInBrowser(scriptName_, args_), scriptName, args);
     if (result.error === null && script.after) {
         result.result = await script.after(args, result.result);
     }

@@ -2,23 +2,17 @@ import * as fs from 'fs';
 
 import { Viewer } from '../../../apps/viewer';
 import { Camera } from '../../../mol-canvas3d/camera';
-import { Sphere3D } from '../../../mol-math/geometry';
 import { Mat3, Vec3 } from '../../../mol-math/linear-algebra';
-import { Download, ParseCif, RawData, ReadFile } from '../../../mol-plugin-state/transforms/data';
+import { Download, ParseCif } from '../../../mol-plugin-state/transforms/data';
 import { ModelFromTrajectory, StructureComponent, StructureFromModel, TrajectoryFromMmCif } from '../../../mol-plugin-state/transforms/model';
 import { StructureRepresentation3D } from '../../../mol-plugin-state/transforms/representation';
-import { PluginUIContext } from '../../../mol-plugin-ui/context';
-import { PluginCommands } from '../../../mol-plugin/commands';
 import { PluginContext } from '../../../mol-plugin/context';
 import { ViewportScreenshotHelper } from '../../../mol-plugin/util/viewport-screenshot';
-import { Color } from '../../../mol-util/color';
-import { sleep } from '../../../mol-util/sleep';
 
 import { Script } from './types';
 
 
 export const scripts = {
-    /**Blabla */
     s1:
         new Script(
             async (viewer: Viewer, pdbid: string) => {
@@ -46,7 +40,6 @@ export const scripts = {
                 return result;
             }
         ),
-    /**Blabla again */
     s2: new Script(
         async (viewer: Viewer, s: string) => {
 
@@ -57,12 +50,9 @@ export const scripts = {
 
 export async function loadStructureCustom(plugin: PluginContext, url: string) {
     console.log('url:', url);
-    // const data = fs.readFileSync(url); // DEBUG
     const update = plugin.build();
-    const data = update.toRoot()
-        // .apply(RawData, { data: data }) // DEBUG
-        .apply(Download, { url, isBinary: true }) // TODO uncomment
-    const structure = data
+    const structure = update.toRoot()
+        .apply(Download, { url, isBinary: true })
         .apply(ParseCif)
         .apply(TrajectoryFromMmCif)
         .apply(ModelFromTrajectory)
@@ -98,11 +88,11 @@ const rotationMatrices = {
     front: Mat3.create(1, 0, 0, 0, 1, 0, 0, 0, 1), // = eye
     top: Mat3.create(1, 0, 0, 0, 0, 1, 0, -1, 0), // = rotX90
     side: Mat3.create(0, 0, 1, 0, 1, 0, -1, 0, 0), // view from right = rotY270
-}
+};
 /** Combine multiple rotation matrices in the order as they are applied */
 function combineRotations(...matrices: Mat3[]) {
     // First applied rotation is the rightmost in the product
-    let result = Mat3.identity();
+    const result = Mat3.identity();
     for (const mat of matrices) {
         Mat3.mul(result, mat, result);
     }

@@ -1,22 +1,20 @@
-import { default as createGLContext } from 'gl';
 import * as fs from 'fs';
+import { default as createGLContext } from 'gl';
 import { PNG } from 'pngjs';
 
-import { Canvas3D, Canvas3DContext, DefaultCanvas3DParams } from "../../mol-canvas3d/canvas3d";
-import { ImagePass } from "../../mol-canvas3d/passes/image";
-import { RepresentationContext } from "../../mol-repr/representation";
-import { AssetManager } from "../../mol-util/assets";
-import { createContext, WebGLContext } from '../../mol-gl/webgl/context';
-import { InputObserver } from '../../mol-util/input/input-observer';
-import { Passes } from '../../mol-canvas3d/passes/passes';
-import { ColorNames } from '../../mol-util/color/names';
-import { ColorTheme } from '../../mol-theme/color';
 import { PLDDTConfidenceColorThemeProvider } from '../../extensions/model-archive/quality-assessment/color/plddt';
-import { SizeTheme } from '../../mol-theme/size';
+import { Canvas3D, Canvas3DContext, DefaultCanvas3DParams } from '../../mol-canvas3d/canvas3d';
+import { ImagePass } from '../../mol-canvas3d/passes/image';
+import { Passes } from '../../mol-canvas3d/passes/passes';
+import { createContext, WebGLContext } from '../../mol-gl/webgl/context';
+import { ColorTheme } from '../../mol-theme/color';
+import { AssetManager } from '../../mol-util/assets';
+import { ColorNames } from '../../mol-util/color/names';
 import { PixelData } from '../../mol-util/image';
+import { InputObserver } from '../../mol-util/input/input-observer';
 
 
-// This is mostly stolen from molrender project 
+// This is mostly stolen from molrender project
 
 export enum StructureSize { Big, Medium, Small }
 

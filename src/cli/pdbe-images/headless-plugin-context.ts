@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 
-import { Canvas3D } from "../../mol-canvas3d/canvas3d";
+import { Canvas3D } from '../../mol-canvas3d/canvas3d';
 import { PluginContext } from '../../mol-plugin/context';
 import { PluginSpec } from '../../mol-plugin/spec';
 
@@ -34,7 +34,7 @@ export class HeadlessPluginContext extends PluginContext {
         fs.writeFileSync(outPath, snapshot_json);
     }
     /** Remove all nodes from the state tree */
-    async clear(){
+    async clear() {
         await this.build().delete(this.state.data.root).commit();
     }
 }

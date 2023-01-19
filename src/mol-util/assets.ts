@@ -9,8 +9,7 @@ import { UUID } from './uuid';
 import { iterableToArray } from '../mol-data/util';
 import { ajaxGet, DataType, DataResponse, readFromFile } from './data-source';
 import { Task } from '../mol-task';
-import { File_ as File } from './node-workarounds';
-import { SimpleFileReader } from './simple-filereader';
+import { File_ as File } from './nodejs-workarounds';
 
 export { AssetManager, Asset };
 
@@ -94,19 +93,16 @@ class AssetManager {
                 if (this._assets.has(asset.id)) {
                     const entry = this._assets.get(asset.id)!;
                     entry.refCount++;
-                    console.log('Asset reuse');
                     return Asset.Wrapper(await readFromFile(entry.file, type).runInContext(ctx), asset, this);
                 }
 
                 if (!store) {
-                    console.log('Asset download without storing');
                     return Asset.Wrapper(await ajaxGet({ ...asset, type }).runInContext(ctx), asset, this);
                 }
 
                 const data = await ajaxGet({ ...asset, type: 'binary' }).runInContext(ctx);
                 const file = new File([data], 'raw-data');
                 this._assets.set(asset.id, { asset, file, refCount: 1 });
-                console.log('Asset download', asset);
                 return Asset.Wrapper(await readFromFile(file, type).runInContext(ctx), asset, this);
             });
         } else {
@@ -114,7 +110,6 @@ class AssetManager {
                 if (this._assets.has(asset.id)) {
                     const entry = this._assets.get(asset.id)!;
                     entry.refCount++;
-                    console.log('Asset reuse local');
                     return Asset.Wrapper(await readFromFile(entry.file, type).runInContext(ctx), asset, this);
                 }
                 if (!(asset.file instanceof File)) {
@@ -123,7 +118,6 @@ class AssetManager {
                 if (store) {
                     this._assets.set(asset.id, { asset, file: asset.file, refCount: 1 });
                 }
-                console.log('Asset local');
                 return Asset.Wrapper(await readFromFile(asset.file, type).runInContext(ctx), asset, this);
             });
         }
