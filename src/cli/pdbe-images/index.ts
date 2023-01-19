@@ -7,6 +7,7 @@ import path from 'path';
 import { DefaultPluginSpec } from '../../mol-plugin/spec';
 
 import { HeadlessPluginContext } from './headless-plugin-context';
+import { STYLIZED_POSTPROCESSING } from './renderer';
 import { loadStructureCustom } from './scripting/scripts';
 
 
@@ -28,15 +29,16 @@ async function tryPlugin(args: Args) {
     path.join(rootPath, `/home/adam/${args.pdbid}.bcif`);
     console.time('generate');
     for (let i = 0; i < 1; i++) {
-        const plugin = new HeadlessPluginContext(DefaultPluginSpec());
+        const plugin = new HeadlessPluginContext(DefaultPluginSpec(), { width: 800, height: 800 });
         await plugin.init();
 
         // await loadStructureCustom(plugin, 'file://' + path.join(rootPath, 'in', `${args.pdbid}.bcif`));
         await loadStructureCustom(plugin, `https://www.ebi.ac.uk/pdbe/entry-files/download/${args.pdbid}.bcif`);
         // await loadStructureCustom(plugin, path.join(rootPath, 'in', `2nnj.bcif`));
-        await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}.png`));
-        // await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-big.png`), undefined, [1600, 1600]);
-        await plugin.saveStateSnapshot(path.join(rootPath, 'out', `${args.pdbid}.molj`));
+        await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-1.png`));
+        await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-1-stylized.png`), undefined, STYLIZED_POSTPROCESSING);
+        await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-1-big.png`), { width: 2000, height: 1600 });
+        await plugin.saveStateSnapshot(path.join(rootPath, 'out', `${args.pdbid}-1.molj`));
 
         await plugin.clear();
         await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-2.png`));

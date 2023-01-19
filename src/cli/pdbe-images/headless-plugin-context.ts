@@ -1,19 +1,20 @@
 import * as fs from 'fs';
 
 import { Canvas3D } from '../../mol-canvas3d/canvas3d';
+import { PostprocessingProps } from '../../mol-canvas3d/passes/postprocessing';
 import { PluginContext } from '../../mol-plugin/context';
 import { PluginSpec } from '../../mol-plugin/spec';
 
-import { ImageRenderer, StructureSize } from './renderer';
+import { ImageRenderer } from './renderer';
 
 
 
 /** PluginContext that can be used in NodeJS (without DOM) */
 export class HeadlessPluginContext extends PluginContext {
     renderer: ImageRenderer;
-    constructor(spec: PluginSpec, canvasSize: { width: number, height: number } = { width: 800, height: 800 }) {
+    constructor(spec: PluginSpec, canvasSize: { width: number, height: number } = { width: 640, height: 480 }) {
         super(spec);
-        this.renderer = new ImageRenderer(canvasSize.width, canvasSize.height, 'png', 'off');
+        this.renderer = new ImageRenderer(canvasSize);
         (this.canvas3d as Canvas3D) = this.renderer.canvas3d;
     }
     /** Make ready for saving image or state snapshot */
@@ -22,9 +23,9 @@ export class HeadlessPluginContext extends PluginContext {
         this.canvas3d.commit(true);
     }
     /** Render the current plugin state to a PNG file */
-    async saveImage(outPath: string, structureSize: StructureSize = StructureSize.Medium, imageSize?: [number, number]) {
+    async saveImage(outPath: string, imageSize?: { width: number, height: number }, props?: Partial<PostprocessingProps>) {
         this.commitCanvas();
-        return await this.renderer.createImage(outPath, structureSize, imageSize);
+        return await this.renderer.createImage(outPath, imageSize, props);
     }
     /** Save the current plugin state to a MOLJ file */
     saveStateSnapshot(outPath: string) {

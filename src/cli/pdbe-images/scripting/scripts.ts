@@ -31,6 +31,7 @@ export async function loadStructureCustom(plugin: PluginContext, url: string) {
     await update.commit();
     plugin.managers.camera.reset(); // needed when camera.manualReset=true in canvas3D props
     adjustCamera(plugin);
+
     // TODO custom camera position and rotation
     // plugin.managers.camera.focusSphere(Sphere3D.create(Vec3.create(0,10,10), 20));
 }
@@ -64,6 +65,7 @@ function adjustCamera(plugin: PluginContext) {
     plugin.canvas3d.commit(true);
     const combo = combineRotations(rotationMatrices.rotX90, rotationMatrices.rotY90);
     snapshot = cameraSetRotation(snapshot, combo);
+    snapshot = cameraZoom(snapshot, 0.8);
     // const snapshot = cameraZoom(snapshot, 1);
     plugin.canvas3d.camera.setState(snapshot);
 }
@@ -74,15 +76,6 @@ function cameraZoom(old: Camera.Snapshot, zoomout: number): Camera.Snapshot {
     const newPosition = Vec3.add(Vec3(), old.target, relPosition);
     return { ...old, position: newPosition };
 }
-/** Don't use, won't work with multiple subsequent rotations!!! TODO remove this function */
-function cameraTurn(old: Camera.Snapshot, rotation: Mat3): Camera.Snapshot {
-    const cameraRotation = Mat3.invert(Mat3(), rotation);
-    let relPosition = Vec3.sub(Vec3(), old.position, old.target);
-    relPosition = Vec3.transformMat3(relPosition, relPosition, cameraRotation);
-    const newPosition = Vec3.add(Vec3(), old.target, relPosition);
-    const newUp = Vec3.transformMat3(Vec3(), old.up, cameraRotation);
-    return { ...old, position: newPosition, up: newUp };
-}
 function cameraSetRotation(old: Camera.Snapshot, rotation: Mat3): Camera.Snapshot {
     const cameraRotation = Mat3.invert(Mat3(), rotation); // TODO will this work with multiple subsequent rotations???!!! probably not!
     const dist = Vec3.distance(old.position, old.target);
@@ -90,10 +83,6 @@ function cameraSetRotation(old: Camera.Snapshot, rotation: Mat3): Camera.Snapsho
     const newUp = Vec3.transformMat3(Vec3(), Vec3.create(0, 1, 0), cameraRotation);
     const newPosition = Vec3.add(Vec3(), old.target, relPosition);
     return { ...old, position: newPosition, up: newUp };
-}
-
-function getStateSnapshot(plugin: PluginContext) {
-    return JSON.stringify(plugin.managers.snapshot.getStateSnapshot({ params: {} }), null, 2);
 }
 
 export async function getImage(plugin: PluginContext, resolution: [number, number]) {

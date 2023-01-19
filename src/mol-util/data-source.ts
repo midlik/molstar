@@ -303,6 +303,7 @@ function ajaxGetInternal<T extends DataType>(title: string | undefined, url: str
 
 /** Alternative implementation of ajaxGetInternal (because xhr2 does not support file:// protocol) */
 function ajaxGetInternal_file_NodeJS<T extends DataType>(title: string | undefined, url: string, type: T, body?: string, headers?: [string, string][]): Task<DataResponse<T>> {
+    if (!RUNNING_IN_NODEJS) throw new Error('This function should only be used when running in Node.js');
     if (!url.startsWith('file://')) throw new Error('This function is only for URLs with protocol file://');
     const filename = url.substring('file://'.length);
     const data = fs.readFileSync(filename);
