@@ -4,7 +4,7 @@ import { Viewer } from '../../../apps/viewer';
 import { Camera } from '../../../mol-canvas3d/camera';
 import { Sphere3D } from '../../../mol-math/geometry';
 import { Mat3, Vec3 } from '../../../mol-math/linear-algebra';
-import { Download, ParseCif, RawData } from '../../../mol-plugin-state/transforms/data';
+import { Download, ParseCif, RawData, ReadFile } from '../../../mol-plugin-state/transforms/data';
 import { ModelFromTrajectory, StructureComponent, StructureFromModel, TrajectoryFromMmCif } from '../../../mol-plugin-state/transforms/model';
 import { StructureRepresentation3D } from '../../../mol-plugin-state/transforms/representation';
 import { PluginUIContext } from '../../../mol-plugin-ui/context';
@@ -56,11 +56,13 @@ export const scripts = {
 };
 
 export async function loadStructureCustom(plugin: PluginContext, url: string) {
+    console.log('url:', url);
     // const data = fs.readFileSync(url); // DEBUG
     const update = plugin.build();
-    const structure = update.toRoot()
+    const data = update.toRoot()
         // .apply(RawData, { data: data }) // DEBUG
         .apply(Download, { url, isBinary: true }) // TODO uncomment
+    const structure = data
         .apply(ParseCif)
         .apply(TrajectoryFromMmCif)
         .apply(ModelFromTrajectory)
@@ -80,27 +82,28 @@ export async function loadStructureCustom(plugin: PluginContext, url: string) {
     await update.commit();
     plugin.managers.camera.reset(); // needed when camera.manualReset=true in canvas3D props
     adjustCamera(plugin);
+    // TODO test Asset caching in NodeJS
     // TODO custom camera position and rotation
     // plugin.managers.camera.focusSphere(Sphere3D.create(Vec3.create(0,10,10), 20));
 }
 
 const rotationMatrices = {
-    eye: Mat3.create(1,0,0, 0,1,0, 0,0,1), // column-wise
-    rotX90: Mat3.create(1,0,0, 0,0,1, 0,-1,0), // column-wise
-    rotY90: Mat3.create(0,0,-1, 0,1,0, 1,0,0), // column-wise
-    rotZ90: Mat3.create(0,1,0, -1,0,0, 0,0,1), // column-wise
-    rotX270: Mat3.create(1,0,0, 0,0,-1, 0,1,0),
-    rotY270: Mat3.create(0,0,1, 0,1,0, -1,0,0),
-    rotZ270: Mat3.create(0,-1,0, 1,0,0, 0,0,1),
-    front: Mat3.create(1,0,0, 0,1,0, 0,0,1), // = eye
-    top: Mat3.create(1,0,0, 0,0,1, 0,-1,0), // = rotX90
-    side: Mat3.create(0,0,1, 0,1,0, -1,0,0), // view from right = rotY270
+    eye: Mat3.create(1, 0, 0, 0, 1, 0, 0, 0, 1), // column-wise
+    rotX90: Mat3.create(1, 0, 0, 0, 0, 1, 0, -1, 0), // column-wise
+    rotY90: Mat3.create(0, 0, -1, 0, 1, 0, 1, 0, 0), // column-wise
+    rotZ90: Mat3.create(0, 1, 0, -1, 0, 0, 0, 0, 1), // column-wise
+    rotX270: Mat3.create(1, 0, 0, 0, 0, -1, 0, 1, 0),
+    rotY270: Mat3.create(0, 0, 1, 0, 1, 0, -1, 0, 0),
+    rotZ270: Mat3.create(0, -1, 0, 1, 0, 0, 0, 0, 1),
+    front: Mat3.create(1, 0, 0, 0, 1, 0, 0, 0, 1), // = eye
+    top: Mat3.create(1, 0, 0, 0, 0, 1, 0, -1, 0), // = rotX90
+    side: Mat3.create(0, 0, 1, 0, 1, 0, -1, 0, 0), // view from right = rotY270
 }
 /** Combine multiple rotation matrices in the order as they are applied */
-function combineRotations(...matrices: Mat3[]){
+function combineRotations(...matrices: Mat3[]) {
     // First applied rotation is the rightmost in the product
     let result = Mat3.identity();
-    for (const mat of matrices){
+    for (const mat of matrices) {
         Mat3.mul(result, mat, result);
     }
     return result;

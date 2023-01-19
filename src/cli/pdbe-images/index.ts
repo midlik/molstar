@@ -118,15 +118,23 @@ async function tryPlugin(args: Args) {
     for (let i = 0; i < 1; i++) {
         const plugin = new HeadlessPluginContext(DefaultPluginSpec());
         await plugin.init();
-        // await loadStructureCustom(plugin, path.join(rootPath, 'in', `${args.pdbid}.bcif`));
+
+        // await loadStructureCustom(plugin, 'file://' + path.join(rootPath, 'in', `${args.pdbid}.bcif`));
         await loadStructureCustom(plugin, `https://www.ebi.ac.uk/pdbe/entry-files/download/${args.pdbid}.bcif`);
         // await loadStructureCustom(plugin, path.join(rootPath, 'in', `2nnj.bcif`));
         await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}.png`));
         // await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-big.png`), undefined, [1600, 1600]);
         await plugin.saveStateSnapshot(path.join(rootPath, 'out', `${args.pdbid}.molj`));
+
         await plugin.clear();
         await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-2.png`));
         await plugin.saveStateSnapshot(path.join(rootPath, 'out', `${args.pdbid}-2.molj`));
+
+        await loadStructureCustom(plugin, 'file://' + path.join(rootPath, 'in', `${args.pdbid}.bcif`));
+        // await loadStructureCustom(plugin, `https://www.ebi.ac.uk/pdbe/entry-files/download/${args.pdbid}.bcif`);
+        await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-3.png`));
+        await plugin.saveStateSnapshot(path.join(rootPath, 'out', `${args.pdbid}-3.molj`));
+
         plugin.dispose();
     }
     console.timeEnd('generate');

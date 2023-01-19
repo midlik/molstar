@@ -52,7 +52,7 @@ function mapDataToFormat(file: any, data: any, format: any, encoding: any) {
     }
 }
 
-class CFileReader implements FileReader {
+class CFileReader /*implements FileReader*/ {
     static readonly EMPTY = 0;
     static readonly LOADING = 1;
     static readonly DONE = 2;

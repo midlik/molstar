@@ -34,7 +34,7 @@ function getXMLHttpRequest(): typeof XMLHttpRequest {
 
 function getFile(): typeof File {
     if (typeof document === 'undefined') {
-        class File_NodeJs implements File {
+        class File_NodeJs_old implements File {
             // Blob fields
             readonly size: number;
             readonly type: string;
@@ -56,6 +56,31 @@ function getFile(): typeof File {
                 this.slice = blob.slice;
                 this.stream = blob.stream;
                 this.text = blob.text;
+                // File extending fields
+                this.name = fileName;
+                this.lastModified = options?.lastModified ?? 0;
+                this.webkitRelativePath = '';
+            }
+        }
+        class File_NodeJs implements File {
+            private readonly blob: Blob;
+            // Blob fields
+            readonly size: number;
+            readonly type: string;
+            arrayBuffer() { return this.blob.arrayBuffer(); }
+            slice(start?: number, end?: number, contentType?: string) { return this.blob.slice(start, end, contentType); }
+            stream() { return this.blob.stream(); }
+            text() { return this.blob.text(); }
+            // File extending fields
+            name: string;
+            lastModified: number;
+            webkitRelativePath: string;
+
+            constructor(fileBits: BlobPart[], fileName: string, options?: FilePropertyBag) {
+                this.blob = new Blob(fileBits, options);
+                // Blob fields
+                this.size = this.blob.size;
+                this.type = this.blob.type;
                 // File extending fields
                 this.name = fileName;
                 this.lastModified = options?.lastModified ?? 0;
