@@ -1,6 +1,3 @@
-import * as fs from 'fs';
-
-import { Viewer } from '../../../apps/viewer';
 import { Camera } from '../../../mol-canvas3d/camera';
 import { Mat3, Vec3 } from '../../../mol-math/linear-algebra';
 import { Download, ParseCif } from '../../../mol-plugin-state/transforms/data';
@@ -9,44 +6,6 @@ import { StructureRepresentation3D } from '../../../mol-plugin-state/transforms/
 import { PluginContext } from '../../../mol-plugin/context';
 import { ViewportScreenshotHelper } from '../../../mol-plugin/util/viewport-screenshot';
 
-import { Script } from './types';
-
-
-export const scripts = {
-    s1:
-        new Script(
-            async (viewer: Viewer, pdbid: string) => {
-                // throw new Error('Debug');
-                // await sleep(5000);
-                console.log('balbalbalbalablab');
-                // await viewer.loadStructureFromUrl(`https://www.ebi.ac.uk/pdbe/entry-files/download/${pdbid}.bcif`, 'mmcif', true);
-                // await loadStructureCustom(viewer.plugin, `https://www.ebi.ac.uk/pdbe/entry-files/download/${pdbid}.bcif`);
-                await loadStructureCustom(viewer.plugin, `file:///home/adam/${pdbid}.bcif`);
-                // await sleep(500);
-                // TODO await/force auto-zoom, before making snapshot!
-                const image = await getImage(viewer.plugin, [800, 800]);
-                // await viewer.loadStructureFromUrl(`https://www.ebi.ac.uk/pdbe/entry-files/download/2nnj.bcif`, 'mmcif', true);
-                // const image2 = await getImage(viewer.plugin, [800, 800]);
-                const molj = getStateSnapshot(viewer.plugin);
-                await viewer.plugin.clear();
-                return { molj, image };
-
-            }
-        ).withAfter(
-            (args, result) => {
-                fs.writeFileSync('/home/adam/test-state.molj', result.molj);
-                fs.writeFileSync('/home/adam/test-image.png', result.image, 'base64');
-                // fs.writeFileSync('/home/adam/test-image2.png', result.image2, 'base64');
-                return result;
-            }
-        ),
-    s2: new Script(
-        async (viewer: Viewer, s: string) => {
-
-            return s + s;
-        },
-    ),
-};
 
 export async function loadStructureCustom(plugin: PluginContext, url: string) {
     console.log('url:', url);
@@ -72,7 +31,6 @@ export async function loadStructureCustom(plugin: PluginContext, url: string) {
     await update.commit();
     plugin.managers.camera.reset(); // needed when camera.manualReset=true in canvas3D props
     adjustCamera(plugin);
-    // TODO test Asset caching in NodeJS
     // TODO custom camera position and rotation
     // plugin.managers.camera.focusSphere(Sphere3D.create(Vec3.create(0,10,10), 20));
 }

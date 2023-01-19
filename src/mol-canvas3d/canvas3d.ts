@@ -534,7 +534,6 @@ namespace Canvas3D {
 
         function resolveCameraReset() {
             if (!cameraResetRequested) return;
-            console.log('resolveCameraReset');
 
             const boundingSphere = scene.boundingSphereVisible;
             const { center, radius } = boundingSphere;
@@ -729,9 +728,6 @@ namespace Canvas3D {
             resized.next(+new Date());
         }
 
-        let resetCounter = 0;
-        function incResetCounter() { resetCounter++; }
-
         return {
             webgl,
 
@@ -783,9 +779,6 @@ namespace Canvas3D {
                 resizeRequested = true;
             },
             requestCameraReset: options => {
-                console.log('requestCameraReset', resetCounter, options);
-                // if (resetCounter > 0) throw new Error('debug');
-                incResetCounter();
                 nextCameraResetDuration = options?.durationMs;
                 nextCameraResetSnapshot = options?.snapshot;
                 cameraResetRequested = true;
