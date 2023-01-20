@@ -6,6 +6,14 @@ Note that since we don't clearly distinguish between a public and private interf
 
 ## [Unreleased]
 
+- Improve `Dnatco` extension
+    - Factor out common code in `Dnatco` extension
+    - Add `NtC tube` visual. Applicable for structures with NtC annotation
+    - [Breaking] Rename `DnatcoConfalPyramids` to `DnatcoNtCs`
+- Improve boundary calculation performance
+
+## [v3.29.0] - 2023-01-15
+
 - `meshes` extension: Fixed a bug in mesh visualization (show backfaces when opacity < 1)
 - Add color quick select control to Volume controls
 - Fix `dropFiles` bug
@@ -17,6 +25,16 @@ Note that since we don't clearly distinguish between a public and private interf
     - Update clip `defines` only when changed
     - Check for identity in structure/unit areEqual methods
     - Avoid cloning of structure representation parameters
+    - Make SymmetryOperator.createMapping monomorphic
+    - Improve bonding-sphere calculation
+    - Defer Scene properties calculation (markerAverage, opacityAverage, hasOpaque)
+    - Improve checks in in UnitsRepresentation setVisualState
+- Add StructureElement.Loci.forEachLocation
+- Add RepresentationRegistry.clear and ThemeRegistry.clear
+- Add generic Loci support for overpaint, substance, clipping themes
+- Add `.getCenter` and `.center` to `Camera`
+- Add support to dim unmarked groups
+- Add support for marker edge strength
 
 ## [v3.28.0] - 2022-12-20
 
