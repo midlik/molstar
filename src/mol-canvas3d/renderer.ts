@@ -4,43 +4,42 @@ import * as JPEG from 'jpeg-js';
 import path from 'path';
 import { PNG } from 'pngjs';
 
-import { Canvas3D, Canvas3DContext, Canvas3DProps, DefaultCanvas3DParams } from '../../mol-canvas3d/canvas3d';
-import { ImagePass, ImageProps } from '../../mol-canvas3d/passes/image';
-import { Passes } from '../../mol-canvas3d/passes/passes';
-import { PostprocessingParams, PostprocessingProps } from '../../mol-canvas3d/passes/postprocessing';
-import { createContext } from '../../mol-gl/webgl/context';
-import { AssetManager } from '../../mol-util/assets';
-import { ColorNames } from '../../mol-util/color/names';
-import { PixelData } from '../../mol-util/image';
-import { InputObserver } from '../../mol-util/input/input-observer';
-import { ParamDefinition } from '../../mol-util/param-definition';
+import { createContext } from '../mol-gl/webgl/context';
+import { AssetManager } from '../mol-util/assets';
+import { ColorNames } from '../mol-util/color/names';
+import { PixelData } from '../mol-util/image';
+import { InputObserver } from '../mol-util/input/input-observer';
+import { ParamDefinition } from '../mol-util/param-definition';
+import { Canvas3D, Canvas3DContext, Canvas3DProps, DefaultCanvas3DParams } from './canvas3d';
+import { ImagePass, ImageProps } from './passes/image';
+import { Passes } from './passes/passes';
+import { PostprocessingParams, PostprocessingProps } from './passes/postprocessing';
 
 
-type ImageRendererOptions = {
+export type ImageRendererOptions = {
     webgl?: WebGLContextAttributes,
     canvas?: Partial<Canvas3DProps>,
     imagePass?: Partial<ImageProps>,
 }
 
-type RawImageData = {
+export type RawImageData = {
     data: Uint8ClampedArray,
     width: number,
     height: number,
 }
 
 
+/** To render Canvas3D when running in Node.js (without DOM) */
 export class Canvas3DRenderer {
     readonly canvas3d: Canvas3D;
     readonly imagePass: ImagePass;
 
     constructor(readonly canvasSize: { width: number, height: number }, canvas3d?: Canvas3D, options?: ImageRendererOptions) {
-        // TODO add optional param canvas3d - test
         if (canvas3d) {
             this.canvas3d = canvas3d;
         } else {
             const glContext = createGLContext(this.canvasSize.width, this.canvasSize.height, options?.webgl ?? defaultWebGLAttributes());
             const webgl = createContext(glContext);
-
             const input = InputObserver.create();
             const attribs = { ...Canvas3DContext.DefaultAttribs };
             const passes = new Passes(webgl, new AssetManager(), attribs);

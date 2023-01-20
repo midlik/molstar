@@ -1,20 +1,19 @@
 import * as fs from 'fs';
 
-import { Canvas3D } from '../../mol-canvas3d/canvas3d';
-import { PostprocessingProps } from '../../mol-canvas3d/passes/postprocessing';
-import { PluginContext } from '../../mol-plugin/context';
-import { PluginSpec } from '../../mol-plugin/spec';
-
-import { Canvas3DRenderer } from './renderer';
+import { Canvas3D } from '../mol-canvas3d/canvas3d';
+import { PostprocessingProps } from '../mol-canvas3d/passes/postprocessing';
+import { Canvas3DRenderer, ImageRendererOptions } from '../mol-canvas3d/renderer';
+import { PluginContext } from './context';
+import { PluginSpec } from './spec';
 
 
 /** PluginContext that can be used in Node.js (without DOM) */
 export class HeadlessPluginContext extends PluginContext {
     renderer: Canvas3DRenderer;
 
-    constructor(spec: PluginSpec, canvasSize: { width: number, height: number } = { width: 640, height: 480 }) {
+    constructor(spec: PluginSpec, canvasSize: { width: number, height: number } = { width: 640, height: 480 }, rendererOptions?: ImageRendererOptions) {
         super(spec);
-        this.renderer = new Canvas3DRenderer(canvasSize);
+        this.renderer = new Canvas3DRenderer(canvasSize, undefined, rendererOptions);
         (this.canvas3d as Canvas3D) = this.renderer.canvas3d;
     }
 

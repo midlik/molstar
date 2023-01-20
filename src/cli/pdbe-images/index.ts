@@ -6,8 +6,9 @@ import path from 'path';
 
 import { DefaultPluginSpec } from '../../mol-plugin/spec';
 
-import { HeadlessPluginContext } from './headless-plugin-context';
-import { STYLIZED_POSTPROCESSING } from './renderer';
+import { HeadlessPluginContext } from '../../mol-plugin/headless-plugin-context';
+import { STYLIZED_POSTPROCESSING } from '../../mol-canvas3d/renderer';
+
 import { loadStructureCustom } from './scripts';
 
 
