@@ -30,12 +30,12 @@ export class ImageRenderer {
         // TODO add optional param canvas3d?
         const glContext = createGLContext(this.canvasSize.width, this.canvasSize.height, options?.webgl ?? defaultWebGLAttributes());
         this.webgl = createContext(glContext);
-        
+
         const input = InputObserver.create();
         const attribs = { ...Canvas3DContext.DefaultAttribs };
         const passes = new Passes(this.webgl, new AssetManager(), attribs);
         this.canvas3d = Canvas3D.create({ webgl: this.webgl, input, passes, attribs } as Canvas3DContext, options?.canvas ?? defaultCanvas3DParams());
-        
+
         this.imagePass = this.canvas3d.getImagePass(options?.imagePass ?? defaultImagePassParams());
         this.imagePass.setSize(this.canvasSize.width, this.canvasSize.height);
     }
@@ -133,7 +133,7 @@ export function defaultWebGLAttributes(): WebGLContextAttributes {
     };
 }
 
-export function defaultImagePassParams(): Partial<ImageProps>{
+export function defaultImagePassParams(): Partial<ImageProps> {
     return {
         cameraHelper: {
             axes: { name: 'off', params: {} },
@@ -162,4 +162,4 @@ export const STYLIZED_POSTPROCESSING: Partial<PostprocessingProps> = {
             includeTransparent: true,
         }
     }
-}
+};

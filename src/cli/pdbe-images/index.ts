@@ -8,7 +8,7 @@ import { DefaultPluginSpec } from '../../mol-plugin/spec';
 
 import { HeadlessPluginContext } from './headless-plugin-context';
 import { STYLIZED_POSTPROCESSING } from './renderer';
-import { loadStructureCustom } from './scripting/scripts';
+import { loadStructureCustom } from './scripts';
 
 
 interface Args {

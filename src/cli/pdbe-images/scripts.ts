@@ -1,10 +1,10 @@
-import { Camera } from '../../../mol-canvas3d/camera';
-import { Mat3, Vec3 } from '../../../mol-math/linear-algebra';
-import { Download, ParseCif } from '../../../mol-plugin-state/transforms/data';
-import { ModelFromTrajectory, StructureComponent, StructureFromModel, TrajectoryFromMmCif } from '../../../mol-plugin-state/transforms/model';
-import { StructureRepresentation3D } from '../../../mol-plugin-state/transforms/representation';
-import { PluginContext } from '../../../mol-plugin/context';
-import { ViewportScreenshotHelper } from '../../../mol-plugin/util/viewport-screenshot';
+import { Camera } from '../../mol-canvas3d/camera';
+import { Mat3, Vec3 } from '../../mol-math/linear-algebra';
+import { Download, ParseCif } from '../../mol-plugin-state/transforms/data';
+import { ModelFromTrajectory, StructureComponent, StructureFromModel, TrajectoryFromMmCif } from '../../mol-plugin-state/transforms/model';
+import { StructureRepresentation3D } from '../../mol-plugin-state/transforms/representation';
+import { PluginContext } from '../../mol-plugin/context';
+import { ViewportScreenshotHelper } from '../../mol-plugin/util/viewport-screenshot';
 
 
 export async function loadStructureCustom(plugin: PluginContext, url: string) {
