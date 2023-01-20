@@ -1,12 +1,14 @@
 import * as fs from 'fs';
 import { default as createGLContext } from 'gl';
+import * as JPEG from 'jpeg-js';
+import path from 'path';
 import { PNG } from 'pngjs';
 
 import { Canvas3D, Canvas3DContext, Canvas3DProps, DefaultCanvas3DParams } from '../../mol-canvas3d/canvas3d';
 import { ImagePass, ImageProps } from '../../mol-canvas3d/passes/image';
 import { Passes } from '../../mol-canvas3d/passes/passes';
 import { PostprocessingParams, PostprocessingProps } from '../../mol-canvas3d/passes/postprocessing';
-import { createContext, WebGLContext } from '../../mol-gl/webgl/context';
+import { createContext } from '../../mol-gl/webgl/context';
 import { AssetManager } from '../../mol-util/assets';
 import { ColorNames } from '../../mol-util/color/names';
 import { PixelData } from '../../mol-util/image';
@@ -20,61 +22,99 @@ type ImageRendererOptions = {
     imagePass?: Partial<ImageProps>,
 }
 
+type RawImageData = {
+    data: Uint8ClampedArray,
+    width: number,
+    height: number,
+}
 
-export class ImageRenderer {
-    readonly webgl: WebGLContext;
+
+export class Canvas3DRenderer {
     readonly canvas3d: Canvas3D;
     readonly imagePass: ImagePass;
 
-    constructor(readonly canvasSize: { width: number, height: number }, options?: ImageRendererOptions) {
-        // TODO add optional param canvas3d?
-        const glContext = createGLContext(this.canvasSize.width, this.canvasSize.height, options?.webgl ?? defaultWebGLAttributes());
-        this.webgl = createContext(glContext);
+    constructor(readonly canvasSize: { width: number, height: number }, canvas3d?: Canvas3D, options?: ImageRendererOptions) {
+        // TODO add optional param canvas3d - test
+        if (canvas3d) {
+            this.canvas3d = canvas3d;
+        } else {
+            const glContext = createGLContext(this.canvasSize.width, this.canvasSize.height, options?.webgl ?? defaultWebGLAttributes());
+            const webgl = createContext(glContext);
 
-        const input = InputObserver.create();
-        const attribs = { ...Canvas3DContext.DefaultAttribs };
-        const passes = new Passes(this.webgl, new AssetManager(), attribs);
-        this.canvas3d = Canvas3D.create({ webgl: this.webgl, input, passes, attribs } as Canvas3DContext, options?.canvas ?? defaultCanvas3DParams());
+            const input = InputObserver.create();
+            const attribs = { ...Canvas3DContext.DefaultAttribs };
+            const passes = new Passes(webgl, new AssetManager(), attribs);
+            this.canvas3d = Canvas3D.create({ webgl, input, passes, attribs } as Canvas3DContext, options?.canvas ?? defaultCanvas3DParams());
+        }
 
         this.imagePass = this.canvas3d.getImagePass(options?.imagePass ?? defaultImagePassParams());
         this.imagePass.setSize(this.canvasSize.width, this.canvasSize.height);
     }
 
-    getImageData(width: number, height: number) {
+    private getImageData(width: number, height: number): RawImageData {
         this.imagePass.setSize(width, height);
         this.imagePass.render();
         this.imagePass.colorTarget.bind();
 
         const array = new Uint8Array(width * height * 4);
-        this.webgl.readPixels(0, 0, width, height, array);
+        this.canvas3d.webgl.readPixels(0, 0, width, height, array);
         const pixelData = PixelData.create(array, width, height);
         PixelData.flipY(pixelData);
         PixelData.divideByAlpha(pixelData);
-        // ImageData is not defined in Node
+        // ImageData is not defined in Node.js
         return { data: new Uint8ClampedArray(array), width, height };
     }
 
-    async createImage(outPath: string, imageSize?: { width: number, height: number }, postprocessing?: Partial<PostprocessingProps>) {
+    async getImageRaw(imageSize?: { width: number, height: number }, postprocessing?: Partial<PostprocessingProps>): Promise<RawImageData> {
         const width = imageSize?.width ?? this.canvasSize.width;
         const height = imageSize?.height ?? this.canvasSize.height;
-
         this.canvas3d.commit(true);
-
         this.imagePass.setProps({
             postprocessing: ParamDefinition.merge(PostprocessingParams, this.canvas3d.props.postprocessing, postprocessing),
         });
+        return this.getImageData(width, height);
+    }
 
-        const imageData = this.getImageData(width, height);
-
-        const generatedPng = new PNG({ width, height });
+    async getImagePng(imageSize?: { width: number, height: number }, postprocessing?: Partial<PostprocessingProps>): Promise<PNG> {
+        const imageData = await this.getImageRaw(imageSize, postprocessing);
+        const generatedPng = new PNG({ width: imageData.width, height: imageData.height });
         generatedPng.data = Buffer.from(imageData.data.buffer);
-        await writePngFile(generatedPng, outPath);
+        return generatedPng;
+    }
+
+    async getImageJpeg(imageSize?: { width: number, height: number }, postprocessing?: Partial<PostprocessingProps>, jpegQuality: number = 90): Promise<JPEG.BufferRet> {
+        const imageData = await this.getImageRaw(imageSize, postprocessing);
+        const generatedJpeg = JPEG.encode(imageData, jpegQuality);
+        return generatedJpeg;
+    }
+
+    async saveImage(outPath: string, imageSize?: { width: number, height: number }, postprocessing?: Partial<PostprocessingProps>, format?: 'png' | 'jpeg', jpegQuality = 90) {
+        if (!format) {
+            const extension = path.extname(outPath).toLowerCase();
+            if (extension === '.png') format = 'png';
+            else if (extension === '.jpg' || extension === '.jpeg') format = 'jpeg';
+            else throw new Error(`Cannot guess image format from file path '${outPath}'. Specify format explicitly or use path with one of these extensions: .png, .jpg, .jpeg`);
+        }
+        if (format === 'png') {
+            const generatedPng = await this.getImagePng(imageSize, postprocessing);
+            await writePngFile(generatedPng, outPath);
+        } else if (format === 'jpeg') {
+            const generatedJpeg = await this.getImageJpeg(imageSize, postprocessing, jpegQuality);
+            await writeJpegFile(generatedJpeg, outPath);
+        } else {
+            throw new Error(`Invalid format: ${format}`);
+        }
     }
 }
 
 async function writePngFile(png: PNG, outPath: string) {
     await new Promise<void>(resolve => {
         png.pack().pipe(fs.createWriteStream(outPath)).on('finish', resolve);
+    });
+}
+async function writeJpegFile(jpeg: JPEG.BufferRet, outPath: string) {
+    await new Promise<void>(resolve => {
+        fs.writeFile(outPath, jpeg.data, () => resolve());
     });
 }
 
@@ -89,7 +129,7 @@ export function defaultCanvas3DParams(): Partial<Canvas3DProps> {
                 name: 'off', params: {}
             },
             fov: 90,
-            manualReset: true
+            manualReset: false,
         },
         cameraFog: {
             name: 'on',

@@ -5,37 +5,37 @@ import { PostprocessingProps } from '../../mol-canvas3d/passes/postprocessing';
 import { PluginContext } from '../../mol-plugin/context';
 import { PluginSpec } from '../../mol-plugin/spec';
 
-import { ImageRenderer } from './renderer';
+import { Canvas3DRenderer } from './renderer';
 
 
-
-/** PluginContext that can be used in NodeJS (without DOM) */
+/** PluginContext that can be used in Node.js (without DOM) */
 export class HeadlessPluginContext extends PluginContext {
-    renderer: ImageRenderer;
+    renderer: Canvas3DRenderer;
+
     constructor(spec: PluginSpec, canvasSize: { width: number, height: number } = { width: 640, height: 480 }) {
         super(spec);
-        this.renderer = new ImageRenderer(canvasSize);
+        this.renderer = new Canvas3DRenderer(canvasSize);
         (this.canvas3d as Canvas3D) = this.renderer.canvas3d;
     }
-    /** Make ready for saving image or state snapshot */
-    commitCanvas() {
-        if (!this.canvas3d) throw new Error('canvas3d is undefined');
-        this.canvas3d.commit(true);
+
+    /** Render the current plugin state to a PNG or JPEG file */
+    async saveImage(outPath: string, imageSize?: { width: number, height: number }, props?: Partial<PostprocessingProps>, format?: 'png' | 'jpeg', jpegQuality = 90) {
+        this.canvas3d!.commit(true);
+        return await this.renderer.saveImage(outPath, imageSize, props, format, jpegQuality);
     }
-    /** Render the current plugin state to a PNG file */
-    async saveImage(outPath: string, imageSize?: { width: number, height: number }, props?: Partial<PostprocessingProps>) {
-        this.commitCanvas();
-        return await this.renderer.createImage(outPath, imageSize, props);
+
+    /** Get the current plugin state */
+    getStateSnapshot() {
+        this.canvas3d!.commit(true);
+        return this.managers.snapshot.getStateSnapshot({ params: {} });
     }
+
     /** Save the current plugin state to a MOLJ file */
-    saveStateSnapshot(outPath: string) {
-        this.commitCanvas();
-        const snapshot = this.managers.snapshot.getStateSnapshot({ params: {} });
+    async saveStateSnapshot(outPath: string) {
+        const snapshot = this.getStateSnapshot();
         const snapshot_json = JSON.stringify(snapshot, null, 2);
-        fs.writeFileSync(outPath, snapshot_json);
-    }
-    /** Remove all nodes from the state tree */
-    async clear() {
-        await this.build().delete(this.state.data.root).commit();
+        await new Promise<void>(resolve => {
+            fs.writeFile(outPath, snapshot_json, () => resolve());
+        });
     }
 }

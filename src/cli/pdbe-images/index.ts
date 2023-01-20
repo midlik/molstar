@@ -36,6 +36,8 @@ async function tryPlugin(args: Args) {
         await loadStructureCustom(plugin, `https://www.ebi.ac.uk/pdbe/entry-files/download/${args.pdbid}.bcif`);
         // await loadStructureCustom(plugin, path.join(rootPath, 'in', `2nnj.bcif`));
         await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-1.png`));
+        await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-1.jpg`));
+        await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-1-stylized.jpg`), { width: 1000, height: 750 }, STYLIZED_POSTPROCESSING, undefined, 20);
         await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-1-stylized.png`), undefined, STYLIZED_POSTPROCESSING);
         await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-1-big.png`), { width: 2000, height: 1600 });
         await plugin.saveStateSnapshot(path.join(rootPath, 'out', `${args.pdbid}-1.molj`));
