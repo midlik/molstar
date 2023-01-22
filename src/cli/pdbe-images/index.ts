@@ -9,7 +9,7 @@ import { DefaultPluginSpec } from '../../mol-plugin/spec';
 import { HeadlessPluginContext } from '../../mol-plugin/headless-plugin-context';
 import { STYLIZED_POSTPROCESSING } from '../../mol-canvas3d/renderer';
 
-import { loadStructureCustom } from './scripts';
+import { loadStructureCustom, loadStructureCustom2 } from './scripts';
 
 
 interface Args {
@@ -33,24 +33,24 @@ async function tryPlugin(args: Args) {
         const plugin = new HeadlessPluginContext(DefaultPluginSpec(), { width: 800, height: 800 });
         await plugin.init();
 
-        // await loadStructureCustom(plugin, 'file://' + path.join(rootPath, 'in', `${args.pdbid}.bcif`));
-        await loadStructureCustom(plugin, `https://www.ebi.ac.uk/pdbe/entry-files/download/${args.pdbid}.bcif`);
+        await loadStructureCustom2(plugin, 'file://' + path.join(rootPath, 'in', `${args.pdbid}.bcif`));
+        // await loadStructureCustom(plugin, `https://www.ebi.ac.uk/pdbe/entry-files/download/${args.pdbid}.bcif`);
         // await loadStructureCustom(plugin, path.join(rootPath, 'in', `2nnj.bcif`));
         await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-1.png`));
-        await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-1.jpg`));
-        await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-1-stylized.jpg`), { width: 1000, height: 750 }, STYLIZED_POSTPROCESSING, undefined, 20);
+        // await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-1.jpg`));
+        // await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-1-stylized.jpg`), { width: 1000, height: 750 }, STYLIZED_POSTPROCESSING, undefined, 20);
         await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-1-stylized.png`), undefined, STYLIZED_POSTPROCESSING);
-        await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-1-big.png`), { width: 2000, height: 1600 });
+        // await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-1-big.png`), { width: 2000, height: 1600 });
         await plugin.saveStateSnapshot(path.join(rootPath, 'out', `${args.pdbid}-1.molj`));
 
         await plugin.clear();
-        await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-2.png`));
-        await plugin.saveStateSnapshot(path.join(rootPath, 'out', `${args.pdbid}-2.molj`));
+        // await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-2.png`));
+        // await plugin.saveStateSnapshot(path.join(rootPath, 'out', `${args.pdbid}-2.molj`));
 
-        await loadStructureCustom(plugin, 'file://' + path.join(rootPath, 'in', `${args.pdbid}.bcif`));
+        // await loadStructureCustom(plugin, 'file://' + path.join(rootPath, 'in', `${args.pdbid}.bcif`));
         // await loadStructureCustom(plugin, `https://www.ebi.ac.uk/pdbe/entry-files/download/${args.pdbid}.bcif`);
-        await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-3.png`));
-        await plugin.saveStateSnapshot(path.join(rootPath, 'out', `${args.pdbid}-3.molj`));
+        // await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-3.png`));
+        // await plugin.saveStateSnapshot(path.join(rootPath, 'out', `${args.pdbid}-3.molj`));
 
         plugin.dispose();
     }

@@ -1,5 +1,7 @@
 import { Camera } from '../../mol-canvas3d/camera';
 import { Mat3, Vec3 } from '../../mol-math/linear-algebra';
+import { PrincipalAxes } from '../../mol-math/linear-algebra/matrix/principal-axes';
+import { Model } from '../../mol-model/structure';
 import { Download, ParseCif } from '../../mol-plugin-state/transforms/data';
 import { ModelFromTrajectory, StructureComponent, StructureFromModel, TrajectoryFromMmCif } from '../../mol-plugin-state/transforms/model';
 import { StructureRepresentation3D } from '../../mol-plugin-state/transforms/representation';
@@ -34,6 +36,75 @@ export async function loadStructureCustom(plugin: PluginContext, url: string) {
 
     // TODO custom camera position and rotation
     // plugin.managers.camera.focusSphere(Sphere3D.create(Vec3.create(0,10,10), 20));
+}
+export async function loadStructureCustom2(plugin: PluginContext, url: string) {
+    console.log('url:', url);
+    const model = await plugin.build().toRoot()
+        .apply(Download, { url, isBinary: true })
+        .apply(ParseCif)
+        .apply(TrajectoryFromMmCif)
+        .apply(ModelFromTrajectory).commit();
+    modelLayingRotation(model.data!);
+    const structure = await plugin.build().to(model.ref)
+        .apply(StructureFromModel).commit(); //, {'type': {name: 'assembly',...}} can be done here
+    const polymer = await plugin.build().to(structure.ref).apply(StructureComponent, { type: { name: 'static', params: 'polymer' } }).commit();
+    const ligand = await plugin.build().to(structure.ref).apply(StructureComponent, { type: { name: 'static', params: 'ligand' } }).commit();
+    await plugin.build().to(polymer.ref).apply(StructureRepresentation3D, {
+        type: { name: 'cartoon', params: { alpha: 1 } },
+        // colorTheme: { name: 'uniform', params: { value: Color.fromNormalizedRgb(0.4, 0.5, 1) } },
+        colorTheme: { name: 'sequence-id', params: {} },
+    }).commit();
+    await plugin.build().to(ligand.ref).apply(StructureRepresentation3D, {
+        type: { name: 'ball-and-stick', params: { sizeFactor: 1 } },
+        colorTheme: { name: 'element-symbol', params: { carbonColor: { name: 'element-symbol', params: {} } } },
+        sizeTheme: { name: 'physical', params: {} },
+    }).commit();
+    plugin.managers.camera.reset(); // needed when camera.manualReset=true in canvas3D props
+    // adjustCamera(plugin);
+
+    // TODO custom camera position and rotation
+    // plugin.managers.camera.focusSphere(Sphere3D.create(Vec3.create(0,10,10), 20));
+}
+
+function modelLayingRotation(model: Model) {
+    const coords = {
+        x: model.atomicConformation.x,
+        y: model.atomicConformation.y,
+        z: model.atomicConformation.z,
+    }
+    const atomIds = model.atomicHierarchy.atoms.label_atom_id;
+    const alphaIndices = indicesWith(atomIds.toArray(), 'CA');
+    const alphaCoords = coordsAt(coords, alphaIndices);
+    console.log('alpha indices:', alphaIndices, atomIds);
+    console.log(alphaCoords.x.length, alphaCoords.x);
+    const axes = PrincipalAxes.calculateMomentsAxes(flattenCoords(alphaCoords));
+    const normAxes = PrincipalAxes.calculateNormalizedAxes(axes);
+    console.log('axes:', axes);
+    console.log('normalized axes:', normAxes);
+}
+function indicesWith<T>(array: ArrayLike<T>, value: T): number[] {
+    const indices = [];
+    for (let i = 0; i < array.length; i++) {
+        if (array[i] === value) {
+            indices.push(i);
+        }
+    }
+    return indices;
+}
+type Coords = { x: ArrayLike<number>, y: ArrayLike<number>, z: ArrayLike<number> }
+function coordsAt(coords: Coords, indices: number[]): Coords {
+    return {
+        x: indices.map(i => coords.x[i]),
+        y: indices.map(i => coords.y[i]),
+        z: indices.map(i => coords.z[i]),
+    };
+}
+function flattenCoords(coords: Coords): number[] {
+    const flat = [];
+    for (let i = 0; i < coords.x.length; i++) {
+        flat.push(coords.x[i], coords.y[i], coords.z[i]);
+    }
+    return flat;
 }
 
 const rotationMatrices = {
