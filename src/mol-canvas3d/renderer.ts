@@ -130,7 +130,7 @@ export function defaultCanvas3DParams(): Partial<Canvas3DProps> {
             fov: 90,
             manualReset: false,
         },
-        cameraResetDurationMs: 0, // TODO include in Mol* !!!
+        cameraResetDurationMs: 0,
         cameraFog: {
             name: 'on',
             params: {

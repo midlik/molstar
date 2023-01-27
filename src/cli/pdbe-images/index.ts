@@ -2,15 +2,15 @@
 // // Run:   node lib/commonjs/cli/pdbe-images 1tqn
 
 import { ArgumentParser } from 'argparse';
-import path from 'path';
 import fs from 'fs';
+import path from 'path';
 
+import { STYLIZED_POSTPROCESSING } from '../../mol-canvas3d/renderer';
+import { HeadlessPluginContext } from '../../mol-plugin/headless-plugin-context';
 import { DefaultPluginSpec } from '../../mol-plugin/spec';
 
-import { HeadlessPluginContext } from '../../mol-plugin/headless-plugin-context';
-import { STYLIZED_POSTPROCESSING } from '../../mol-canvas3d/renderer';
-
-import { loadStructureCustom, processUrl, save } from './scripts';
+import { NaughtySaver } from './helpers';
+import { processUrl } from './scripts';
 
 
 interface Args {
@@ -26,7 +26,6 @@ function parseArguments(): Args {
 
 
 async function tryPlugin(args: Args) {
-    // https://www.ebi.ac.uk/pdbe/entry-files/download/2nnj.bcif
     const rootPath = '/home/adam/Workspace/PDBeImages/data-new';
     const outDir = path.join(rootPath, 'out',  args.pdbid);
     fs.mkdirSync(outDir, { recursive: true });
@@ -35,8 +34,11 @@ async function tryPlugin(args: Args) {
         const plugin = new HeadlessPluginContext(DefaultPluginSpec(), { width: 800, height: 800 });
         await plugin.init();
 
+        const localUrl = 'file://' + path.join(rootPath, 'in', `${args.pdbid}.bcif`);
+        const wwwUrl = `https://www.ebi.ac.uk/pdbe/entry-files/download/${args.pdbid}.bcif`;
+        const saver = new NaughtySaver(plugin, outDir, wwwUrl);
 
-        await processUrl(plugin, `https://www.ebi.ac.uk/pdbe/entry-files/download/${args.pdbid}.bcif`, name => save(plugin, outDir, name));
+        await processUrl(plugin, localUrl, name => saver.save(name));
 
         // // await loadStructureCustom(plugin, 'file://' + path.join(rootPath, 'in', `${args.pdbid}.bcif`));
         // await loadStructureCustom(plugin, `https://www.ebi.ac.uk/pdbe/entry-files/download/${args.pdbid}.bcif`);
