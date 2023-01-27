@@ -13,8 +13,6 @@ type Coords = {
 
 
 export function modelLayingRotation(model: Model): Mat3 {
-    // TODO what about ligand and their "order" in the model or multi-chain assemblies?
-    // and water!!!
     const coords = {
         x: model.atomicConformation.x,
         y: model.atomicConformation.y,
@@ -28,26 +26,11 @@ export function modelLayingRotation(model: Model): Mat3 {
     }
     const flatCoords = flattenCoords(heavyCoords);
     return layingRotation(flatCoords);
-    // console.log('nAtoms:', flatCoords.length / 3);
-    // console.time('PCA');
-    // const axes = PrincipalAxes.calculateMomentsAxes(flatCoords);
-    // const normAxes = PrincipalAxes.calculateNormalizedAxes(axes);
-    // console.timeEnd('PCA');
-    // const R = mat3FromRows(normAxes.dirA, normAxes.dirB, normAxes.dirC);
-    // avoidMirrorRotation(R); // The SVD implementation seems to always provide proper rotation, but just to be sure
-    // console.time('Flip');
-    // const flip = canonicalFlip(flatCoords, R, axes.origin);
-    // Mat3.mul(R, flip, R);
-    // console.timeEnd('Flip');
-    // const checkFlip = canonicalFlip(flatCoords, R, axes.origin); // debug, TODO remove once tested on a larger dataset
-    // if (!Mat3.areEqual(checkFlip, Mat3.identity(), 1e-12)) throw new Error('Needed flip after flipping is not identity');
-    // return R;
 }
 
 export function structureLayingRotation(structure: Structure): Mat3 {
     const flatCoords = selectMainCoords(structure);
-    console.log('n:', flatCoords.length / 3);
-    logCoords(flatCoords);
+    // logCoords(flatCoords);
     return layingRotation(flatCoords);
 }
 
@@ -73,7 +56,7 @@ function layingRotation(flatCoords: number[]): Mat3 {
  * 2. all non-hydrogen atoms with exception of water (HOH)
  * 3. all atoms 
  * Return the coordinates in a flattened array (in triples) */
- function selectMainCoords(struct: Structure, minAtoms: number = 3): number[] {
+function selectMainCoords(struct: Structure, minAtoms: number = 3): number[] {
     // TODO check how unit.polymerElements works for sugars, 6q4r? --> sugars not in polymerElements
     // TODO check how the old process treats non-polymer in orient
     // TODO try on altIds / multiple models (NMR)
@@ -95,10 +78,10 @@ function selectCACoords(struct: Structure): number[] {
         // console.log('unit', unit.id);
         // console.log(unit.elements)
         // console.log(unit.polymerElements);
-        const { x, y, z } = unit.model.atomicConformation;
+        const { x, y, z } = unit.conformation;
         for (let i = 0; i < unit.polymerElements.length; i++) {
             const index = unit.polymerElements[i];
-            coords.push(x[index], y[index], z[index]);
+            coords.push(x(index), y(index), z(index));
         }
     }
     return coords;
@@ -132,9 +115,9 @@ function selectAllCoords(struct: Structure): number[] {
     return coords;
 }
 
-function logCoords(coords: number[]){
-    for (let i = 0; i < coords.length; i+=3){
-        console.log(round(coords[i], 3), round(coords[i+1], 3), round(coords[i+2], 3));
+function logCoords(coords: number[]) {
+    for (let i = 0; i < coords.length; i += 3) {
+        console.log(round(coords[i], 3), round(coords[i + 1], 3), round(coords[i + 2], 3));
     }
 }
 

@@ -3,13 +3,14 @@
 
 import { ArgumentParser } from 'argparse';
 import path from 'path';
+import fs from 'fs';
 
 import { DefaultPluginSpec } from '../../mol-plugin/spec';
 
 import { HeadlessPluginContext } from '../../mol-plugin/headless-plugin-context';
 import { STYLIZED_POSTPROCESSING } from '../../mol-canvas3d/renderer';
 
-import { loadStructureCustom } from './scripts';
+import { loadStructureCustom, processUrl, save } from './scripts';
 
 
 interface Args {
@@ -27,31 +28,35 @@ function parseArguments(): Args {
 async function tryPlugin(args: Args) {
     // https://www.ebi.ac.uk/pdbe/entry-files/download/2nnj.bcif
     const rootPath = '/home/adam/Workspace/PDBeImages/data-new';
-    path.join(rootPath, `/home/adam/${args.pdbid}.bcif`);
+    const outDir = path.join(rootPath, 'out',  args.pdbid);
+    fs.mkdirSync(outDir, { recursive: true });
     console.time('generate');
     for (let i = 0; i < 1; i++) {
         const plugin = new HeadlessPluginContext(DefaultPluginSpec(), { width: 800, height: 800 });
         await plugin.init();
 
-        // await loadStructureCustom(plugin, 'file://' + path.join(rootPath, 'in', `${args.pdbid}.bcif`));
-        await loadStructureCustom(plugin, `https://www.ebi.ac.uk/pdbe/entry-files/download/${args.pdbid}.bcif`);
-        // await loadStructureCustom(plugin, path.join(rootPath, 'in', `2nnj.bcif`));
-        await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}.png`));
-        await plugin.saveImage(path.join(rootPath, 'out', `out.png`)); // debug
-        // await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}.jpg`));
-        // await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-stylized.jpg`), { width: 1000, height: 750 }, STYLIZED_POSTPROCESSING, undefined, 20);
-        await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-stylized.png`), undefined, STYLIZED_POSTPROCESSING);
-        // await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-big.png`), { width: 2000, height: 1600 });
-        await plugin.saveStateSnapshot(path.join(rootPath, 'out', `${args.pdbid}.molj`));
 
-        await plugin.clear();
-        // await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-2.png`));
-        // await plugin.saveStateSnapshot(path.join(rootPath, 'out', `${args.pdbid}-2.molj`));
+        await processUrl(plugin, `https://www.ebi.ac.uk/pdbe/entry-files/download/${args.pdbid}.bcif`, name => save(plugin, outDir, name));
 
-        // await loadStructureCustom(plugin, 'file://' + path.join(rootPath, 'in', `${args.pdbid}.bcif`));
+        // // await loadStructureCustom(plugin, 'file://' + path.join(rootPath, 'in', `${args.pdbid}.bcif`));
         // await loadStructureCustom(plugin, `https://www.ebi.ac.uk/pdbe/entry-files/download/${args.pdbid}.bcif`);
-        // await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-3.png`));
-        // await plugin.saveStateSnapshot(path.join(rootPath, 'out', `${args.pdbid}-3.molj`));
+        // // await loadStructureCustom(plugin, path.join(rootPath, 'in', `2nnj.bcif`));
+        // await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}.png`));
+        // await plugin.saveImage(path.join(rootPath, 'out', `out.png`)); // debug
+        // // await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}.jpg`));
+        // // await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-stylized.jpg`), { width: 1000, height: 750 }, STYLIZED_POSTPROCESSING, undefined, 20);
+        // await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-stylized.png`), undefined, STYLIZED_POSTPROCESSING);
+        // // await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-big.png`), { width: 2000, height: 1600 });
+        // await plugin.saveStateSnapshot(path.join(rootPath, 'out', `${args.pdbid}.molj`));
+
+        // await plugin.clear();
+        // // await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-2.png`));
+        // // await plugin.saveStateSnapshot(path.join(rootPath, 'out', `${args.pdbid}-2.molj`));
+
+        // // await loadStructureCustom(plugin, 'file://' + path.join(rootPath, 'in', `${args.pdbid}.bcif`));
+        // // await loadStructureCustom(plugin, `https://www.ebi.ac.uk/pdbe/entry-files/download/${args.pdbid}.bcif`);
+        // // await plugin.saveImage(path.join(rootPath, 'out', `${args.pdbid}-3.png`));
+        // // await plugin.saveStateSnapshot(path.join(rootPath, 'out', `${args.pdbid}-3.molj`));
 
         plugin.dispose();
     }
