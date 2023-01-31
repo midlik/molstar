@@ -8,6 +8,7 @@ import path from 'path';
 import { STYLIZED_POSTPROCESSING } from '../../mol-canvas3d/renderer';
 import { HeadlessPluginContext } from '../../mol-plugin/headless-plugin-context';
 import { DefaultPluginSpec } from '../../mol-plugin/spec';
+import { PDBeAPI } from './api';
 
 import { NaughtySaver } from './helpers';
 import { processUrl } from './scripts';
@@ -38,7 +39,11 @@ async function tryPlugin(args: Args) {
         const wwwUrl = `https://www.ebi.ac.uk/pdbe/entry-files/download/${args.pdbid}.bcif`;
         const saver = new NaughtySaver(plugin, outDir, wwwUrl);
 
-        await processUrl(plugin, localUrl, name => saver.save(name));
+        const api = new PDBeAPI();
+        const ass = await api.getPrefferedAssembly(args.pdbid);
+        console.log('preferred:', ass);
+
+        await processUrl(plugin, localUrl, name => saver.save(name), api, args.pdbid);
 
         // // await loadStructureCustom(plugin, 'file://' + path.join(rootPath, 'in', `${args.pdbid}.bcif`));
         // await loadStructureCustom(plugin, `https://www.ebi.ac.uk/pdbe/entry-files/download/${args.pdbid}.bcif`);

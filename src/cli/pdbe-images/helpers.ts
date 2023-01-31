@@ -8,6 +8,10 @@ import { PluginContext } from "../../mol-plugin/context";
 import { HeadlessPluginContext } from '../../mol-plugin/headless-plugin-context';
 
 
+/** Throw an error when a warning is issued. */
+const FAIL_ON_WARNING = true;
+
+
 export const ZOOMOUT = 0.7;
 
 
@@ -143,4 +147,11 @@ export async function save1side(plugin: PluginContext, saveFunction: (name: stri
 
     adjustCamera(plugin, s => cameraSetRotation(s, rotation));
     await saveFunction(name);
+}
+
+export function warn(...args: any[]){
+    console.warn('WARNING:', ...args);
+    if (FAIL_ON_WARNING) {
+        throw new Error(`Warning thrown and FAIL_ON_WARNING===true (${args})`);
+    }
 }
