@@ -41,7 +41,7 @@ async function tryPlugin(args: Args) {
 
         const api = new PDBeAPI();
         const ass = await api.getPrefferedAssembly(args.pdbid);
-        console.log('preferred:', ass);
+        // console.log('preferred:', ass);
 
         await processUrl(plugin, localUrl, name => saver.save(name), api, args.pdbid);
 

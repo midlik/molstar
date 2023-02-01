@@ -14,8 +14,8 @@ export class PDBeAPI {
     async getAssemblies(pdbId: string): Promise<AssemblyRecord[]> {
         const url = `${this.baseUrl}/pdb/entry/summary/${pdbId}`;
         const json = await this.get(url);
-        console.log(url);
-        console.log(json);
+        // console.log(url);
+        // console.log(json);
         const assemblies = []
         for (const record of json[pdbId] ?? []) {
             for (const assembly of record.assemblies) {

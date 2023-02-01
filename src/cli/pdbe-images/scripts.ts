@@ -82,19 +82,23 @@ export async function processUrl(plugin: PluginContext, url: string, saveFunctio
 
 async function generateAll(plugin: PluginContext, model: StateObjectSelector, saveFunction: (name: string) => any, api: PDBeAPI, pdbId: string) {
     await using(makeStructure(plugin, model, {}), async structure => {
+        const rotation = structureLayingRotation(structure.data!);
         await using(makeComponents(plugin, structure), async components => {
-            const rotation = structureLayingRotation(structure.data!);
-            const polymerCartoon = await makeCartoon(plugin, components.polymer);
-            const ligandSticks = await makeBallsAndSticks(plugin, components.ligand);
-            const branchedCarbohydrate = await makeCarbohydrate(plugin, components.branched);
-            const branchedSticks = await makeBallsAndSticks(plugin, components.branched);
-            await setOpacity(plugin, branchedSticks.value, BRANCHED_STICKS_OPACITY);
-            const visuals = [polymerCartoon.value, ligandSticks.value, branchedCarbohydrate.value, branchedSticks.value];
+            await using(makeComponentVisuals(plugin, components), async viss => { 
+                // const polymerCartoon = await makeCartoon(plugin, components.polymer);
+                // const ligandSticks = await makeBallsAndSticks(plugin, components.ligand);
+                // const branchedCarbohydrate = await makeCarbohydrate(plugin, components.branched);
+                // const branchedSticks = await makeBallsAndSticks(plugin, components.branched);
+                // await setOpacity(plugin, branchedSticks.value, BRANCHED_STICKS_OPACITY);
+                // const visuals = [polymerCartoon.value, ligandSticks.value, branchedCarbohydrate.value, branchedSticks.value];
+    
+                await save3sides(plugin, saveFunction, 'entry-by-chain', rotation, ZOOMOUT);
+    
+                // await setColorByEntity(plugin, visuals);
+                await setColorByEntity(plugin, Object.values(viss));
+                await save3sides(plugin, saveFunction, 'entry-by-entity', rotation, ZOOMOUT);
 
-            await save3sides(plugin, saveFunction, 'entry-by-chain', rotation, ZOOMOUT);
-
-            await setColorByEntity(plugin, visuals);
-            await save3sides(plugin, saveFunction, 'entry-by-entity', rotation, ZOOMOUT);
+            });
 
             // plugin.managers.camera.reset(); // needed when camera.manualReset=true in canvas3D props
             // // adjustCamera_test(plugin);
@@ -146,7 +150,7 @@ async function generateAll(plugin: PluginContext, model: StateObjectSelector, sa
             if (ass.id === prefferedAssembly.assembly_id || true) { // DEBUG
                 // TODO selected and other polymer/ligand/cartoon
                 const entityInfo = getEntityInfo(structure.data!);
-                console.log('Assembly', ass.id, 'entities:', entityInfo);
+                // console.log('Assembly', ass.id, 'entities:', entityInfo);
 
                 await using(makeComponents(plugin, structure), async components => {
                     const polymerCartoon = await makeCartoon(plugin, components.polymer);
@@ -165,7 +169,9 @@ async function generateAll(plugin: PluginContext, model: StateObjectSelector, sa
                 //     await save3sides(plugin, saveFunction, `preferred-assembly-${ass.id}-selection`, rotation, ZOOMOUT);
                 // });
                 await using(makeSelectionsByEntity(plugin, structure), async sels => {
-                    await save3sides(plugin, saveFunction, `preferred-assembly-${ass.id}-selections`, rotation, ZOOMOUT);
+                    await using(makeComponentsForEntities(plugin, sels), async comps => {
+                        await save3sides(plugin, saveFunction, `preferred-assembly-${ass.id}-selections`, rotation, ZOOMOUT);
+                    });
                 });
 
             }
@@ -188,7 +194,6 @@ async function generateAll(plugin: PluginContext, model: StateObjectSelector, sa
         });
     }
     await saveFunction('disposed');
-
 }
 
 function findEntities(model: Model) {
@@ -228,6 +233,12 @@ type ModelObjSelector = StateObjectSelector<PluginStateObject.Molecule.Model, an
 type StructureObjSelector = StateObjectSelector<PluginStateObject.Molecule.Structure, any>
 type VisualObjSelector = StateObjectSelector<PluginStateObject.Molecule.Structure.Representation3D, any>
 
+type ComponentType = 'polymer' | 'ligand' | 'branched'
+type Components = { [type in ComponentType]: StructureObjSelector | null }
+
+type ComponentVisualType = 'polymer-cartoon' | 'ligand-sticks' | 'branched-carbohydrate' | 'branched-sticks'
+type ComponentVisuals = { [type in ComponentVisualType]: VisualObjSelector | null }
+
 type StructureParams = ParamDefinition.Values<ReturnType<typeof RootStructureDefinition.getParams>>
 type VisualParams = ReturnType<typeof StructureRepresentation3D.createDefaultParams>
 
@@ -239,7 +250,7 @@ async function makeStructure(plugin: PluginContext, model: ModelObjSelector, par
     };
 }
 
-async function makeComponents(plugin: PluginContext, structure: StructureObjSelector) {
+async function makeComponents(plugin: PluginContext, structure: StructureObjSelector): Promise<Disposable<Components>> {
     const polymer = await createStructureComponent(plugin, structure, { type: { name: 'static', params: 'polymer' } });
     const ligand = await createStructureComponent(plugin, structure, { type: { name: 'static', params: 'ligand' } });
     const branched = await createStructureComponent(plugin, structure, { type: { name: 'static', params: 'branched' } });
@@ -257,6 +268,27 @@ async function makeComponents(plugin: PluginContext, structure: StructureObjSele
             await update.commit();
         }
     };
+}
+
+async function makeComponentVisuals(plugin: PluginContext, components: Components): Promise<Disposable<ComponentVisuals>> {
+    const polymerCartoon = await makeCartoon(plugin, components.polymer);
+    const branchedCarbohydrate = await makeCarbohydrate(plugin, components.branched);
+    const branchedSticks = await makeBallsAndSticks(plugin, components.branched);
+    await setOpacity(plugin, branchedSticks.value, BRANCHED_STICKS_OPACITY);
+    const ligandSticks = await makeBallsAndSticks(plugin, components.ligand);
+    const visuals: ComponentVisuals = {
+        'polymer-cartoon': polymerCartoon.value,
+        'branched-carbohydrate': branchedCarbohydrate.value,
+        'branched-sticks': branchedSticks.value,
+        'ligand-sticks': ligandSticks.value,
+    };
+    const dispose = async () => {
+        await polymerCartoon.dispose();
+        await branchedCarbohydrate.dispose();
+        await branchedSticks.dispose();
+        await ligandSticks.dispose();
+    };
+    return { value: visuals, dispose: dispose };
 }
 
 async function makeEntitySelection(plugin: PluginContext, structure: StructureObjSelector, entityId: string) {
@@ -277,7 +309,7 @@ async function makeEntitySelection(plugin: PluginContext, structure: StructureOb
             dispose: () => { },
         };
 }
-async function makeSelectionsByEntity(plugin: PluginContext, structure: StructureObjSelector) {
+async function makeSelectionsByEntity(plugin: PluginContext, structure: StructureObjSelector): Promise<Disposable<{ [entityId: string]: StructureObjSelector }>> {
     const info = getEntityInfo(structure.data!);
     const selections: { [entityId: string]: StateObjectSelector } = {};
     for (const entityId in info) {
@@ -287,7 +319,8 @@ async function makeSelectionsByEntity(plugin: PluginContext, structure: Structur
                 entityId,
             ])
         });
-        const selection = await createStructureComponent(plugin, structure, { type: { name: 'expression', params: expression } });
+        const desc = info[entityId].description[0];
+        const selection = await createStructureComponent(plugin, structure, { type: { name: 'expression', params: expression }, label: `Entity ${entityId} (${desc})` });
         if (selection) {
             selections[entityId] = selection;
         }
@@ -304,6 +337,21 @@ async function makeSelectionsByEntity(plugin: PluginContext, structure: Structur
             }
             await update.commit();
         } // TODO this code repeats -> factor out
+    }
+}
+
+async function makeComponentsForEntities(plugin: PluginContext, entities: { [entityId: string]: StructureObjSelector }) {
+    const values: { [entityId: string]: Components } = {};
+    const disposes: (() => any)[] = [];
+    for (const entityId in entities) {
+        const entity = entities[entityId];
+        const comps = await makeComponents(plugin, entity);
+        values[entityId] = comps.value;
+        disposes.push(comps.dispose);
+    }
+    return {
+        value: values,
+        dispose: async () => { for (const disp of disposes) await disp(); },
     }
 }
 
