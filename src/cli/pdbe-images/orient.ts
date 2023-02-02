@@ -54,7 +54,7 @@ function layingRotation(flatCoords: number[]): Mat3 {
 /** Try these selection strategies until having at least `minAtoms` atoms:
  * 1. only "polymer" atoms (e.g. C-alpha and O3')
  * 2. all non-hydrogen atoms with exception of water (HOH)
- * 3. all atoms 
+ * 3. all atoms
  * Return the coordinates in a flattened array (in triples) */
 function selectMainCoords(struct: Structure, minAtoms: number = 3): number[] {
     // TODO check how unit.polymerElements works for sugars, 6q4r? --> sugars not in polymerElements
@@ -124,12 +124,9 @@ function logCoords(coords: number[]) {
 function logStructureInfo(structure: Structure) {
     console.log('structure', structure.label);
     for (const unit of structure.units) {
-        // unit.
         console.log('unit', unit.id);
-        console.log(unit.elements)
+        console.log(unit.elements);
         console.log(unit.polymerElements);
-        // TODO check how unit.polymerElements works for sugars, 6q4r? --> sugars not in polymerElements
-        // TODO check how the old process treats non-polymer in orient
         // const atomId = unit.model.atomicHierarchy.atoms.label_atom_id.toArray();
         for (let i = 0; i < unit.elements.length; i++) {
             const index = unit.elements[i];
@@ -142,10 +139,10 @@ function logStructureInfo(structure: Structure) {
 }
 
 /** Return a rotation matrix that should be applied to coords (after being rotated by `rotation`) to ensure a deterministic "canonical" rotation.
- *  One of 4 possible results is selected so that: 
+ *  One of 4 possible results is selected so that:
  *    1) starting and ending coordinates tend to be more in front (z > 0), middle more behind (z < 0).
  *    2) starting coordinates tend to be more left-top (x < y), ending more right-bottom (x > y).
- *  Provided `origin` parameter MUST be the mean of the coords, otherwise it will not work! 
+ *  Provided `origin` parameter MUST be the mean of the coords, otherwise it will not work!
  */
 function canonicalFlip(flatCoords: number[], rotation: Mat3 = Mat3.identity(), origin: Vec3 = Vec3.zero()): Mat3 {
     const pcaX = Vec3.create(Mat3.getValue(rotation, 0, 0), Mat3.getValue(rotation, 0, 1), Mat3.getValue(rotation, 0, 2));

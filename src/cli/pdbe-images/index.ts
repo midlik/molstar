@@ -5,7 +5,7 @@ import { ArgumentParser } from 'argparse';
 import fs from 'fs';
 import path from 'path';
 
-import { STYLIZED_POSTPROCESSING } from '../../mol-canvas3d/renderer';
+import { defaultCanvas3DParams, defaultWebGLAttributes, ImageRendererOptions, STYLIZED_POSTPROCESSING } from '../../mol-canvas3d/renderer';
 import { HeadlessPluginContext } from '../../mol-plugin/headless-plugin-context';
 import { DefaultPluginSpec } from '../../mol-plugin/spec';
 import { PDBeAPI } from './api';
@@ -28,11 +28,13 @@ function parseArguments(): Args {
 
 async function tryPlugin(args: Args) {
     const rootPath = '/home/adam/Workspace/PDBeImages/data-new';
-    const outDir = path.join(rootPath, 'out',  args.pdbid);
+    const outDir = path.join(rootPath, 'out', args.pdbid);
     fs.mkdirSync(outDir, { recursive: true });
     console.time('generate');
     for (let i = 0; i < 1; i++) {
-        const plugin = new HeadlessPluginContext(DefaultPluginSpec(), { width: 800, height: 800 });
+        const options: ImageRendererOptions = { canvas: defaultCanvas3DParams() };
+        options.canvas!.camera!.manualReset = true;
+        const plugin = new HeadlessPluginContext(DefaultPluginSpec(), { width: 800, height: 800 }, options);
         await plugin.init();
 
         const localUrl = 'file://' + path.join(rootPath, 'in', `${args.pdbid}.bcif`);

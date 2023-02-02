@@ -1,4 +1,4 @@
-import { warn } from "./helpers";
+import { warn } from './helpers';
 
 export class PDBeAPI {
     // TODO implement caching
@@ -14,9 +14,7 @@ export class PDBeAPI {
     async getAssemblies(pdbId: string): Promise<AssemblyRecord[]> {
         const url = `${this.baseUrl}/pdb/entry/summary/${pdbId}`;
         const json = await this.get(url);
-        // console.log(url);
-        // console.log(json);
-        const assemblies = []
+        const assemblies = [];
         for (const record of json[pdbId] ?? []) {
             for (const assembly of record.assemblies) {
                 assemblies.push(assembly);

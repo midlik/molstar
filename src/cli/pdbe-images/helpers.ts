@@ -3,8 +3,8 @@ import path from 'path';
 
 import { Camera } from '../../mol-canvas3d/camera';
 import { Mat3, Vec3 } from '../../mol-math/linear-algebra';
-import { PluginStateSnapshotManager } from "../../mol-plugin-state/manager/snapshots";
-import { PluginContext } from "../../mol-plugin/context";
+import { PluginStateSnapshotManager } from '../../mol-plugin-state/manager/snapshots';
+import { PluginContext } from '../../mol-plugin/context';
 import { HeadlessPluginContext } from '../../mol-plugin/headless-plugin-context';
 
 
@@ -12,22 +12,74 @@ import { HeadlessPluginContext } from '../../mol-plugin/headless-plugin-context'
 const FAIL_ON_WARNING = true;
 
 
-export const ZOOMOUT = 0.7;
+export const ZOOMOUT = 0.75;
 
 
 export interface Disposable<T> {
     value: T,
+    /** Should be awaited */
     dispose: () => any,
 }
 
-/** Apply `func` to `resource`, then dispose it (a la context manager in Python) */
-export async function using<R, Y>(resource: Promise<Disposable<R>> | Disposable<R>, func: (resource: R) => Promise<Y> | Y) {
-    const awaitedResource = await resource;
-    try {
-        return await func(awaitedResource.value);
-    } finally {
-        await awaitedResource.dispose();
+export namespace Disposable {
+    /** Apply `func` to `resource`, then dispose it (a la context manager in Python) */
+    export async function using<R, Y>(resource: Promise<Disposable<R>> | Disposable<R>, func: (resource: R) => Promise<Y> | Y) {
+        const awaitedResource = await resource;
+        try {
+            return await func(awaitedResource.value);
+        } finally {
+            await awaitedResource.dispose();
+        }
     }
+
+    export function combine<K extends string | number, V>(disposables: { [key in K]: Disposable<V> }): Disposable<{ [key in K]: V }> {
+        return {
+            value: objectMapToObjectValues(disposables, (key, disp) => disp.value),
+            dispose: () => Promise.all(objectMap(disposables, (key, disp) => disp.dispose())),
+        };
+    }
+
+    export function hasValue<T>(disposable: Disposable<T | null | undefined>): disposable is Disposable<T> {
+        return disposable.value !== null && disposable.value !== undefined;
+    }
+}
+
+
+export function objectMap<K extends string | number, V, V2>(obj: { [key in K]: V }, func: (key: string, value: V) => V2): V2[] {
+    const result: V2[] = [];
+    for (const key in obj) {
+        const value = obj[key];
+        result.push(func(key, value));
+    }
+    return result;
+}
+
+export function objectMapToObject<K extends string | number, V, K2 extends string | number, V2>(obj: { [key in K]: V }, func: (key: string, value: V) => [K2, V2]): { [key in K2]: V2 } {
+    const result: { [key: string | number]: V2 } = {};
+    for (const key in obj) {
+        const value = obj[key];
+        const [newKey, newValue] = func(key, value);
+        result[newKey] = newValue;
+    }
+    return result as { [key in K2]: V2 };
+}
+
+export function objectMapToObjectValues<K extends string | number, V, V2>(obj: { [key in K]: V }, func: (key: string, value: V) => V2): { [key in K]: V2 } {
+    const result: { [key: string | number]: V2 } = {};
+    for (const key in obj) {
+        const value = obj[key];
+        result[key] = func(key, value);
+    }
+    return result as { [key in K]: V2 };
+}
+
+export async function objectMapToObjectValuesAsync<K extends string | number, V, V2>(obj: { [key in K]: V }, func: (key: string, value: V) => Promise<V2>): Promise<{ [key in K]: V2 }> {
+    const result: { [key: string | number]: V2 } = {};
+    for (const key in obj) {
+        const value = obj[key];
+        result[key] = await func(key, value);
+    }
+    return result as { [key in K]: V2 };
 }
 
 
@@ -114,7 +166,7 @@ export class NaughtySaver {
         await new Promise<void>(resolve => fs.writeFile(path.join(this.directory, name + '.molj'), snapshot_json, () => resolve()));
         // await this.plugin.saveStateSnapshot(path.join(this.directory, name + '.molj'));
     }
-    
+
     static replaceUrlInState(state: PluginStateSnapshotManager.StateSnapshot, newUrl: string) {
         for (const entry of state.entries) {
             for (const transform of entry.snapshot.data?.tree.transforms ?? []) {
@@ -126,30 +178,27 @@ export class NaughtySaver {
     }
 }
 
-
-export async function save3sides(plugin: PluginContext, saveFunction: (name: string) => any, name: string, rotation: Mat3 = Mat3.identity(), zoomout: number = 1) {
+export async function zoomAll(plugin: PluginContext, zoomout: number = ZOOMOUT) {
     plugin.managers.camera.reset(); // needed when camera.manualReset=true in canvas3D props
     adjustCamera(plugin, s => cameraZoom(s, zoomout));
-    // TODO move zoom elsewhere (default zoom might depend on visualization!!! -> bad alignment)
+}
 
+export async function save3sides(plugin: PluginContext, saveFunction: (name: string) => any, name: string, rotation: Mat3 = Mat3.identity(), zoomout: number = 1) {
     adjustCamera(plugin, s => cameraSetRotation(s, rotation));
     await saveFunction(name + '-front');
-    adjustCamera(plugin, s => cameraSetRotation(s, Mat3.mul(Mat3(), rotationMatrices.rotY270, rotation)));
-    await saveFunction(name + '-side');
-    adjustCamera(plugin, s => cameraSetRotation(s, Mat3.mul(Mat3(), rotationMatrices.rotX90, rotation)));
-    await saveFunction(name + '-top');
+    // DEBUG, TODO uncomment these
+    // adjustCamera(plugin, s => cameraSetRotation(s, Mat3.mul(Mat3(), rotationMatrices.rotY270, rotation)));
+    // await saveFunction(name + '-side');
+    // adjustCamera(plugin, s => cameraSetRotation(s, Mat3.mul(Mat3(), rotationMatrices.rotX90, rotation)));
+    // await saveFunction(name + '-top');
 }
 
 export async function save1side(plugin: PluginContext, saveFunction: (name: string) => any, name: string, rotation: Mat3 = Mat3.identity(), zoomout: number = 1) {
-    plugin.managers.camera.reset(); // needed when camera.manualReset=true in canvas3D props
-    adjustCamera(plugin, s => cameraZoom(s, zoomout));
-    // TODO move zoom elsewhere (default zoom might depend on visualization!!! -> bad alignment)
-
     adjustCamera(plugin, s => cameraSetRotation(s, rotation));
     await saveFunction(name);
 }
 
-export function warn(...args: any[]){
+export function warn(...args: any[]) {
     console.warn('WARNING:', ...args);
     if (FAIL_ON_WARNING) {
         throw new Error(`Warning thrown and FAIL_ON_WARNING===true (${args})`);
