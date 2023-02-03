@@ -43,6 +43,8 @@ async function tryPlugin(args: Args) {
 
         const api = new PDBeAPI();
         const ass = await api.getPrefferedAssembly(args.pdbid);
+        const doms = await api.getSiftsMappings(args.pdbid);
+        console.log('domains:', JSON.stringify(doms, undefined, 4));
         // console.log('preferred:', ass);
 
         await processUrl(plugin, localUrl, name => saver.save(name), api, args.pdbid);

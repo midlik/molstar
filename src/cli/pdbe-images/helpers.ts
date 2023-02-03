@@ -9,7 +9,7 @@ import { HeadlessPluginContext } from '../../mol-plugin/headless-plugin-context'
 
 
 /** Throw an error when a warning is issued. */
-const FAIL_ON_WARNING = true;
+const FAIL_ON_WARNING = false;
 
 
 export const ZOOMOUT = 0.75;

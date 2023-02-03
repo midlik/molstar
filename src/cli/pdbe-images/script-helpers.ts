@@ -12,7 +12,7 @@ import { Color } from '../../mol-util/color';
 import { ParamDefinition } from '../../mol-util/param-definition';
 import { setSubtreeVisibility } from '../../mol-plugin/behavior/static/state';
 
-import { Disposable } from './helpers';
+import { Disposable, objectMapToObjectValues } from './helpers';
 import { Download, ParseCif } from '../../mol-plugin-state/transforms/data';
 
 
@@ -29,9 +29,9 @@ const HIGHTLIGHT_BALL_SIZE_FACTOR = 0.75;
 
 type EntityType = ReturnType<Entities['data']['type']['value']>
 
-type ModelObjSelector = StateObjectSelector<PluginStateObject.Molecule.Model, any>
-type StructureObjSelector = StateObjectSelector<PluginStateObject.Molecule.Structure, any>
-type VisualObjSelector = StateObjectSelector<PluginStateObject.Molecule.Structure.Representation3D, any>
+export type ModelObjSelector = StateObjectSelector<PluginStateObject.Molecule.Model, any>
+export type StructureObjSelector = StateObjectSelector<PluginStateObject.Molecule.Structure, any>
+export type VisualObjSelector = StateObjectSelector<PluginStateObject.Molecule.Structure.Representation3D, any>
 type Visuals = VisualObjSelector | null | (VisualObjSelector | null)[]
 
 type ComponentType = 'polymer' | 'ligand' | 'branched' | 'ion'
@@ -104,6 +104,53 @@ export async function makeEntities(plugin: PluginContext, structure: StructureOb
         }
     }
     return Disposable.combine(selections);
+}
+
+export async function makeChain(plugin: PluginContext, structure: StructureObjSelector, chainId: string, authChainId?: string): Promise<Disposable<StructureObjSelector | null>> {
+    const expression = MolScriptBuilder.struct.generator.atomGroups({
+        'chain-test': MolScriptBuilder.core.rel.eq([MolScriptBuilder.struct.atomProperty.macromolecular.label_asym_id(), chainId])
+    });
+    const description = (authChainId && authChainId !== chainId) ? `Chain ${chainId} [auth ${authChainId}]` : `Chain ${chainId}`;
+    return await makeComponent(plugin, structure, {
+        type: { name: 'expression', params: expression },
+        label: description,
+    });
+}
+
+export async function makeAuthChain(plugin: PluginContext, structure: StructureObjSelector, authChainId: string, labelChainId?: string): Promise<Disposable<StructureObjSelector | null>> {
+    const expression = MolScriptBuilder.struct.generator.atomGroups({
+        'chain-test': MolScriptBuilder.core.rel.eq([MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id(), authChainId])
+    });
+    const description = (!labelChainId) ? `Chain auth ${authChainId}` : (authChainId === labelChainId) ? `Chain ${labelChainId}` : `Chain ${labelChainId} [auth ${authChainId}]`;
+    return await makeComponent(plugin, structure, {
+        type: { name: 'expression', params: expression },
+        label: description,
+    });
+}
+
+export interface DomainRanges { chainId: string, ranges: [number, number][] }
+
+export async function makeDomains(plugin: PluginContext, structure: StructureObjSelector, domains: { [label: string]: DomainRanges }): Promise<Disposable<{ [label: string]: StructureObjSelector }>> {
+    const selections: { [label: string]: Disposable<StructureObjSelector> } = {};
+    for (const label in domains) {
+        const selection = await makeDomain(plugin, structure, domains[label], label);
+        if (Disposable.hasValue(selection)) {
+            selections[label] = selection;
+        }
+    }
+    return Disposable.combine(selections);
+}
+
+export async function makeDomain(plugin: PluginContext, structure: StructureObjSelector, domain: DomainRanges, label: string): Promise<Disposable<StructureObjSelector | null>> {
+    const rangeSubexprs = domain.ranges.map(r => MolScriptBuilder.core.rel.inRange([MolScriptBuilder.struct.atomProperty.macromolecular.label_seq_id(), r[0], r[1]]));
+    const expression = MolScriptBuilder.struct.generator.atomGroups({
+        'chain-test': MolScriptBuilder.core.rel.eq([MolScriptBuilder.struct.atomProperty.macromolecular.label_asym_id(), domain.chainId]),
+        'residue-test': MolScriptBuilder.core.logic.or(rangeSubexprs)
+    });
+    return await makeComponent(plugin, structure, {
+        type: { name: 'expression', params: expression },
+        label: label,
+    });
 }
 
 export async function makeComponentsForEntities(plugin: PluginContext, entities: { [entityId: string]: StructureObjSelector }): Promise<Disposable<{ [entityId: string]: Components }>> {
@@ -318,3 +365,7 @@ function getEntityInfo(structure: Structure) {
     }
     return ent;
 }
+
+// function getChainInfo(structure: Structure) {
+
+// }

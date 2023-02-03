@@ -4,10 +4,10 @@ import { ModelFromTrajectory, StructureComponent, StructureFromModel, Trajectory
 import { PluginContext } from '../../mol-plugin/context';
 import { StateObjectSelector } from '../../mol-state';
 
-import { PDBeAPI } from './api';
-import { adjustCamera, cameraSetRotation, cameraZoom, Disposable, save3sides, zoomAll, ZOOMOUT } from './helpers';
+import { DomainRecord, PDBeAPI, SiftsSource } from './api';
+import { adjustCamera, cameraSetRotation, cameraZoom, Disposable, objectMapToObject, save3sides, warn, zoomAll, ZOOMOUT } from './helpers';
 import { structureLayingRotation } from './orient';
-import { makeComponents, makeComponentsForEntities, makeComponentVisuals, makeComponentVisualsForEntities, makeEntities, makeModel, makeStructure, setColorByEntity, setFaded, setHighlight, setVisible } from './script-helpers';
+import { DomainRanges, makeAuthChain, makeComponents, makeComponentsForEntities, makeComponentVisuals, makeComponentVisualsForEntities, makeDomain, makeDomains, makeEntities, makeModel, makeStructure, setColorByEntity, setFaded, setHighlight, setVisible, StructureObjSelector } from './script-helpers';
 import using = Disposable.using;
 
 
@@ -20,6 +20,11 @@ export async function processUrl(plugin: PluginContext, url: string, saveFunctio
 }
 
 async function generateAll(plugin: PluginContext, model: StateObjectSelector, saveFunction: (name: string) => any, api: PDBeAPI, pdbId: string) {
+    const promises = {
+        prefferedAssembly: api.getPrefferedAssembly(pdbId), // TODO allow API-less mode?
+        siftsMappings: api.getSiftsMappings(pdbId),
+    }; // allow async fetching in the meantime
+
     await using(makeStructure(plugin, model, {}), async structure => {
         const rotation = structureLayingRotation(structure.data!);
 
@@ -32,10 +37,12 @@ async function generateAll(plugin: PluginContext, model: StateObjectSelector, sa
                 await save3sides(plugin, saveFunction, 'entry-by-entity', rotation, ZOOMOUT);
             });
         });
+
+        await processDomains(plugin, structure, await promises.siftsMappings, saveFunction);
     });
 
     const assemblies = ModelSymmetry.Provider.get(model.data!)?.assemblies ?? [];
-    const prefferedAssembly = await api.getPrefferedAssembly(pdbId); // TODO allow local API and/or API-less mode?
+    const prefferedAssembly = await promises.prefferedAssembly; // TODO allow local API and/or API-less mode?
 
     for (const ass of assemblies) {
         await using(makeStructure(plugin, model, { type: { name: 'assembly', params: { id: ass.id } } }), async structure => {
@@ -106,4 +113,60 @@ async function generateAll(plugin: PluginContext, model: StateObjectSelector, sa
     // console.log(obj3);
     // console.log(arr);
     // console.log(obj4);
+}
+
+
+async function processDomains(plugin: PluginContext, structure: StructureObjSelector, domains: { [source in SiftsSource]: { [family: string]: DomainRecord[] } }, saveFunction: (name: string) => any) {
+    for (const source in domains) {
+        const domainsInSource = domains[source as SiftsSource];
+        for (const family in domainsInSource) {
+            const domainsInFamily = domainsInSource[family];
+            const domainsByEntity: { [entityId: string]: DomainRecord[] } = {};
+            for (const domain of domainsInFamily) {
+                const entityId = domain.chunks[0].entity_id;
+                (domainsByEntity[entityId] ??= []).push(domain);
+            }
+            for (const entityId in domainsByEntity) {
+                warn(`Selection of the best domain instance not implemented yet, taking the first instance (for family ${family}, entity ${entityId}})`);
+                const theChain = domainsByEntity[entityId][0].chunks[0].asymID;
+                const theAuthChain = domainsByEntity[entityId][0].chunks[0].chain;
+                // TODO select longest/best chain and show all domains on it
+                const theDomains = domainsByEntity[entityId].filter(dom => dom.chunks[0].asymID === theChain);
+                await using(makeAuthChain(plugin, structure, theAuthChain, theChain), async chain => {
+                    if (chain) {
+                        const rotation = structureLayingRotation(chain.data!);
+                        await using(makeComponents(plugin, chain), async components => {
+                            await using(makeComponentVisuals(plugin, components), async visuals => {
+                                // TODO this is spaghetti, divide into functions
+                                zoomAll(plugin);
+                                await setFaded(plugin, Object.values(visuals));
+
+                                const domDefs: { [label: string]: DomainRanges } = {};
+                                for (const dom of theDomains) {
+                                    domDefs[`Domain ${dom.id} (${source} ${family})`] = {
+                                        chainId: dom.chunks[0].asymID,
+                                        ranges: dom.chunks.map(c => [c.CIFstart, c.CIFend] as [number, number])
+                                    };
+                                }
+
+                                await using(makeDomains(plugin, structure, domDefs), async domainStructure => {
+                                    if (domainStructure) {
+                                        await using(makeComponentsForEntities(plugin, domainStructure), async components => {
+                                            await using(makeComponentVisualsForEntities(plugin, components), async visuals => {
+                                                await save3sides(plugin, saveFunction, `chain-${theChain}-domains-${family}`, rotation, ZOOMOUT);
+                                                // TODO color domains differently
+                                                // TODO process per chain
+                                                // TODO merge makeComponents+makeComponentVisuals, makeComponentsForEntities+makeComponentVisualsForEntities
+                                            });
+                                        });
+                                    }
+                                });
+                            });
+                        });
+                    }
+                });
+            }
+            console.log('Mapping', source, family, domainsByEntity);
+        }
+    }
 }
