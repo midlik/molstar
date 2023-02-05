@@ -12,7 +12,6 @@ import { HeadlessPluginContext } from '../../mol-plugin/headless-plugin-context'
 const FAIL_ON_WARNING = false;
 
 
-export const ZOOMOUT = 0.75;
 
 
 export interface Disposable<T> {
@@ -44,6 +43,20 @@ export namespace Disposable {
     }
 }
 
+
+export function objForEach<K extends string | number, V>(obj: { [key in K]: V }, func: (key: string, value: V) => any): void {
+    for (const key in obj) {
+        const value = obj[key];
+        func(key, value);
+    }
+}
+
+export async function objForEachAsync<K extends string | number, V>(obj: { [key in K]: V }, func: (key: string, value: V) => Promise<any>): Promise<void> {
+    for (const key in obj) {
+        const value = obj[key];
+        await func(key, value);
+    }
+}
 
 export function objectMap<K extends string | number, V, V2>(obj: { [key in K]: V }, func: (key: string, value: V) => V2): V2[] {
     const result: V2[] = [];
@@ -83,7 +96,7 @@ export async function objectMapToObjectValuesAsync<K extends string | number, V,
 }
 
 
-const rotationMatrices = {
+export const ROTATION_MATRICES = {
     eye: Mat3.create(1, 0, 0, 0, 1, 0, 0, 0, 1), // column-wise
     rotX90: Mat3.create(1, 0, 0, 0, 0, 1, 0, -1, 0), // column-wise
     rotY90: Mat3.create(0, 0, -1, 0, 1, 0, 1, 0, 0), // column-wise
@@ -104,30 +117,6 @@ function combineRotations(...matrices: Mat3[]) {
         Mat3.mul(result, mat, result);
     }
     return result;
-}
-
-export function adjustCamera(plugin: PluginContext, change: (s: Camera.Snapshot) => Camera.Snapshot) {
-    if (!plugin.canvas3d) throw new Error('plugin.canvas3d is undefined');
-    plugin.canvas3d.commit(true);
-    const oldSnapshot = plugin.canvas3d.camera.getSnapshot();
-    const newSnapshot = change(oldSnapshot);
-    plugin.canvas3d.camera.setState(newSnapshot);
-    // plugin.canvas3d.commit(true);
-    const checkSnapshot = plugin.canvas3d.camera.getSnapshot();
-    if (!Camera.areSnapshotsEqual(newSnapshot, checkSnapshot)) {
-        console.error('Error: The camera has not been adjusted correctly.');
-        console.error('Required:');
-        console.error(newSnapshot);
-        console.error('Real:');
-        console.error(checkSnapshot);
-        throw new Error(`AssertionError: The camera has not been adjusted correctly.`);
-    }
-}
-
-export function adjustCamera_test(plugin: PluginContext) {
-    // const combo = combineRotations(rotationMatrices.rotX90, rotationMatrices.rotY90);
-    const combo = rotationMatrices.rotZ90;
-    adjustCamera(plugin, s => cameraZoom(cameraSetRotation(s, combo), ZOOMOUT));
 }
 
 export function cameraZoom(old: Camera.Snapshot, zoomout: number): Camera.Snapshot {
@@ -176,26 +165,6 @@ export class NaughtySaver {
             }
         }
     }
-}
-
-export async function zoomAll(plugin: PluginContext, zoomout: number = ZOOMOUT) {
-    plugin.managers.camera.reset(); // needed when camera.manualReset=true in canvas3D props
-    adjustCamera(plugin, s => cameraZoom(s, zoomout));
-}
-
-export async function save3sides(plugin: PluginContext, saveFunction: (name: string) => any, name: string, rotation: Mat3 = Mat3.identity(), zoomout: number = 1) {
-    adjustCamera(plugin, s => cameraSetRotation(s, rotation));
-    await saveFunction(name + '-front');
-    // DEBUG, TODO uncomment these
-    // adjustCamera(plugin, s => cameraSetRotation(s, Mat3.mul(Mat3(), rotationMatrices.rotY270, rotation)));
-    // await saveFunction(name + '-side');
-    // adjustCamera(plugin, s => cameraSetRotation(s, Mat3.mul(Mat3(), rotationMatrices.rotX90, rotation)));
-    // await saveFunction(name + '-top');
-}
-
-export async function save1side(plugin: PluginContext, saveFunction: (name: string) => any, name: string, rotation: Mat3 = Mat3.identity(), zoomout: number = 1) {
-    adjustCamera(plugin, s => cameraSetRotation(s, rotation));
-    await saveFunction(name);
 }
 
 export function warn(...args: any[]) {
