@@ -56,13 +56,13 @@ const sharedConfig = {
             'node_modules',
             path.resolve(__dirname, 'lib/')
         ],
-        fallback: {
-            fs: false,
-            buffer: false,
-            crypto: require.resolve('crypto-browserify'),
-            path: require.resolve('path-browserify'),
-            stream: require.resolve('stream-browserify'),
-        }
+        // fallback: {
+        //     fs: false,
+        //     buffer: false,
+        //     crypto: require.resolve('crypto-browserify'),
+        //     path: require.resolve('path-browserify'),
+        //     stream: require.resolve('stream-browserify'),
+        // }
     },
     watchOptions: {
         aggregateTimeout: 750

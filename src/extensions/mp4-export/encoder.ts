@@ -12,6 +12,11 @@ import { PluginContext } from '../../mol-plugin/context';
 import { RuntimeContext } from '../../mol-task';
 import { Color } from '../../mol-util/color';
 
+console.log('HME:', HME)
+console.log('HME.__esModule:', (HME as any).__esModule)
+console.log('HME.thisIsReplacedModule:', (HME as any).thisIsReplacedModule)
+
+
 export interface Mp4EncoderParams<A extends PluginStateAnimation = PluginStateAnimation> {
     pass: ImagePass,
     customBackground?: Color,
