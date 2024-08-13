@@ -280,6 +280,7 @@ namespace Camera {
 
     export interface Snapshot {
         mode: Mode
+        /** Field-of-view in radians (vertical) */
         fov: number
 
         position: Vec3
