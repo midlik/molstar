@@ -161,7 +161,7 @@ namespace CameraTransitionManager {
 
         // Interpolate distance (indirectly via visible sphere radius)
         const rVisSource = visibleSphereRadius(source);
-        const rVisTarget = visibleSphereRadius(source);
+        const rVisTarget = visibleSphereRadius(target);
         const rVis = swellingRadiusInterpolation(rVisSource, rVisTarget, shift, ALPHA, t);
         const dist = cameraTargetDistance(rVis, out.mode, out.fov);
 
