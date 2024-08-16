@@ -187,11 +187,37 @@ namespace CameraTransitionManager {
  * `r0`, `r1` - radius of source (t=0) and target (t=1) sphere;
  * `dist` - distance between centers of source and target sphere;
  * `alpha` - swell parameter (0 = no swell = linear interpolation, 1 = sphere for t=0.5 will be circumscribed to source and radius spheres */
-function swellingRadiusInterpolation(r0: number, r1: number, dist: number, alpha: number, t: number): number {
+function swellingRadiusInterpolationQuad(r0: number, r1: number, dist: number, alpha: number, t: number): number {
     const a = -2 * alpha * dist;
     const b = -a - r0 + r1;
     const c = r0;
     return a * t ** 2 + b * t + c;
+}
+
+function swellingRadiusInterpolation(r0: number, r1: number, dist: number, alpha: 0 | 1, t: number): number {
+    if (alpha === 0 || dist === 0) {
+        return (1 - t) * r0 + t * r1; // linear interpolation
+    }
+    if (r0 >= dist + r1) {
+        const alpha = dist / (r0 - r1);
+        return r1 + (r0 - r1) * magic_cubic(1 - t, alpha);
+    }
+    if (r1 >= dist + r0) {
+        const alpha = dist / (r1 - r0);
+        return r0 + (r1 - r0) * magic_cubic(t, alpha);
+    }
+    const tmax = (dist - r0 + r1) / 2 / dist;
+    const ymax = (dist + r0 + r1) / 2;
+    if (t <= tmax) {
+        return r0 + (ymax - r0) * magic_cubic(t / tmax);
+    } else {
+        return r1 + (ymax - r1) * magic_cubic((1 - t) / (1 - tmax));
+    }
+
+}
+
+function magic_cubic(x: number, alpha: number = 1) {
+    return (1 + 0.5 * alpha) * x - 0.5 * alpha * x ** 3;
 }
 
 /** Return the radius of the largest sphere centered in camera.target which is fully in FOV */
