@@ -4,6 +4,7 @@
  * @author David Sehnal <david.sehnal@gmail.com>
  */
 
+import e from 'express';
 import { lerp } from '../../mol-math/interpolate';
 import { Quat, Vec3 } from '../../mol-math/linear-algebra';
 import { Camera } from '../camera';
@@ -135,24 +136,21 @@ namespace CameraTransitionManager {
     }
 
     export function defaultTransition(out: Camera.Snapshot, t: number, source: Camera.Snapshot, target: Camera.Snapshot): void {
-        const ALPHA = 1; // 0 - equivalent to position interpolation (unless FOV changes), 1 - focuses union of source and target focus spheres in the middle of transition
-        // TODO make alpha customizable
-
         Camera.copySnapshot(out, target);
 
         // Rotate up
         Quat.slerp(_rotUp, Quat.Identity, Quat.rotationTo(_rotUp, source.up, target.up), t);
         Vec3.transformQuat(out.up, source.up, _rotUp);
 
-        // Lerp target, position & radius
+        // Interpolate target
         Vec3.lerp(out.target, source.target, target.target, t);
 
         const shift = Vec3.distance(source.target, target.target);
 
         // Interpolate radius
-        out.radius = swellingRadiusInterpolation(source.radius, target.radius, shift, ALPHA, t);
+        out.radius = swellingRadiusInterpolationSmart(source.radius, target.radius, shift, t);
         // TODO take change of `clipFar` into account
-        out.radiusMax = swellingRadiusInterpolation(source.radiusMax, target.radiusMax, shift, ALPHA, t);
+        out.radiusMax = swellingRadiusInterpolationSmart(source.radiusMax, target.radiusMax, shift, t);
 
         // Interpolate fov & fog
         out.fov = lerp(source.fov, target.fov, t);
@@ -162,7 +160,7 @@ namespace CameraTransitionManager {
         // Interpolate distance (indirectly via visible sphere radius)
         const rVisSource = visibleSphereRadius(source);
         const rVisTarget = visibleSphereRadius(target);
-        const rVis = swellingRadiusInterpolation(rVisSource, rVisTarget, shift, ALPHA, t);
+        const rVis = swellingRadiusInterpolationSmart(rVisSource, rVisTarget, shift, t);
         const dist = cameraTargetDistance(rVis, out.mode, out.fov);
 
         // Rotate between source and targer direction
@@ -182,41 +180,50 @@ namespace CameraTransitionManager {
     }
 }
 
-
-/** Sphere radius "interpolation" method that increases radius in the middle of transition.
+/** Sphere radius "interpolation" method which increases the radius during transition so that for some t (0<=t<=1) the interpolated sphere will contain both source and target spheres.
  * `r0`, `r1` - radius of source (t=0) and target (t=1) sphere;
- * `dist` - distance between centers of source and target sphere;
- * `alpha` - swell parameter (0 = no swell = linear interpolation, 1 = sphere for t=0.5 will be circumscribed to source and radius spheres */
-function swellingRadiusInterpolationQuad(r0: number, r1: number, dist: number, alpha: number, t: number): number {
-    const a = -2 * alpha * dist;
-    const b = -a - r0 + r1;
-    const c = r0;
-    return a * t ** 2 + b * t + c;
-}
-
-function swellingRadiusInterpolation(r0: number, r1: number, dist: number, alpha: 0 | 1, t: number): number {
-    if (alpha === 0 || dist === 0) {
-        return (1 - t) * r0 + t * r1; // linear interpolation
+ * `dist` - distance between centers of source and target sphere. */
+function swellingRadiusInterpolationCubic(r0: number, r1: number, dist: number, t: number): number {
+    if (dist === 0) {
+        return lerp(r0, r1, t);
     }
-    if (r0 >= dist + r1) {
-        const alpha = dist / (r0 - r1);
-        return r1 + (r0 - r1) * magic_cubic(1 - t, alpha);
-    }
-    if (r1 >= dist + r0) {
+    if (r1 >= dist + r0) { // Sphere 1 fully contains sphere 0
         const alpha = dist / (r1 - r0);
-        return r0 + (r1 - r0) * magic_cubic(t, alpha);
+        return lerp(r0, r1, niceCubic(t, alpha));
+    }
+    if (r0 >= dist + r1) { // Sphere 0 fully contains sphere 1
+        const alpha = dist / (r0 - r1);
+        return lerp(r1, r0, niceCubic(1 - t, alpha));
     }
     const tmax = (dist - r0 + r1) / 2 / dist;
-    const ymax = (dist + r0 + r1) / 2;
+    const rmax = (dist + r0 + r1) / 2;
     if (t <= tmax) {
-        return r0 + (ymax - r0) * magic_cubic(t / tmax);
+        return lerp(r0, rmax, niceCubic(t / tmax));
     } else {
-        return r1 + (ymax - r1) * magic_cubic((1 - t) / (1 - tmax));
+        return lerp(r1, rmax, niceCubic((1 - t) / (1 - tmax)));
     }
-
 }
-
-function magic_cubic(x: number, alpha: number = 1) {
+/** Sphere radius "interpolation" method similar to swellingRadiusInterpolationCubic,
+ * but swells less when source and target sphere overlap, and becomes linear when either sphere contains the center of the other
+ * (this is to avoid disturbing zoom-out when the source and target are near). */
+function swellingRadiusInterpolationSmart(r0: number, r1: number, dist: number, t: number): number {
+    const overlapFactor = relativeSphereOverlap(r0, r1, dist);
+    if (overlapFactor <= 0) return swellingRadiusInterpolationCubic(r0, r1, dist, t); // spheres not overlapping
+    if (overlapFactor >= 1) return lerp(r0, r1, t); // either sphere contains the center of the other
+    return lerp(swellingRadiusInterpolationCubic(r0, r1, dist, t), lerp(r0, r1, t) + (1 - overlapFactor), overlapFactor);
+}
+/** Arbitrary measure of how much two spheres overlap (>0 when spheres do not overlap, >=1 when at least of the spheres contains the center of the other) */
+function relativeSphereOverlap(r0: number, r1: number, dist: number): number {
+    const overlap = r0 + r1 - dist;
+    if (r0 === 0 || r1 === 0) {
+        return overlap >= 0 ? Infinity : -Infinity;
+    }
+    return overlap / Math.min(r0, r1);
+}
+/** Auxiliary cubic function that goes from y(0)=0 to y(1)=1.
+ * When alpha=1, it is a curve with inflection point in 0 and stationary point in 1.
+ * When alpha=0, it becomes a linear function. */
+function niceCubic(x: number, alpha: number = 1) {
     return (1 + 0.5 * alpha) * x - 0.5 * alpha * x ** 3;
 }
 
