@@ -4,7 +4,6 @@
  * @author David Sehnal <david.sehnal@gmail.com>
  */
 
-import e from 'express';
 import { lerp } from '../../mol-math/interpolate';
 import { Quat, Vec3 } from '../../mol-math/linear-algebra';
 import { Camera } from '../camera';
@@ -86,6 +85,8 @@ class CameraTransitionManager {
     }
 }
 
+const DEFAULT_EASE = [0.5, 0.5] as [easeIn: number, easeOut: number]; // [0, 0] for no ease (linear)
+
 namespace CameraTransitionManager {
     export type TransitionFunc = (out: Camera.Snapshot, t: number, source: Camera.Snapshot, target: Camera.Snapshot) => void
 
@@ -94,6 +95,8 @@ namespace CameraTransitionManager {
 
     const _sourcePosition = Vec3();
     const _targetPosition = Vec3();
+
+    export const defaultTransition = defaultTransition_swelling;
 
     export function defaultTransition_orig(out: Camera.Snapshot, t: number, source: Camera.Snapshot, target: Camera.Snapshot): void {
         Camera.copySnapshot(out, target);
@@ -135,7 +138,25 @@ namespace CameraTransitionManager {
         out.fog = lerp(source.fog, target.fog, t);
     }
 
-    export function defaultTransition(out: Camera.Snapshot, t: number, source: Camera.Snapshot, target: Camera.Snapshot): void {
+    export function defaultTransition_linear_ease(out: Camera.Snapshot, t: number, source: Camera.Snapshot, target: Camera.Snapshot, ease: [easeIn: number, easeOut: number] = DEFAULT_EASE): void {
+        t = easeAdjustment(t, ease);
+        return defaultTransition_orig(out, t, source, target);
+    }
+
+    export function defaultTransition_linear_constRelSpeed_ease(out: Camera.Snapshot, t: number, source: Camera.Snapshot, target: Camera.Snapshot, ease: [easeIn: number, easeOut: number] = DEFAULT_EASE): void {
+        t = easeAdjustment(t, ease);
+        const distSource = Vec3.distance(source.target, source.position);
+        const distTarget = Vec3.distance(target.target, target.position);
+        const q = constRelSpeedQuotientAdj_linRadIntp(t, distSource, distTarget);
+        // console.log('adj', q, t, `, R ${distSource}->${distTarget}`)
+        // TODO calculate from vis.radius, not dist
+        // TODO only apply constRelSpeedLinRadIntpT2Q to position and distance interpolation, not needed for angles
+        return defaultTransition_orig(out, q, source, target);
+    }
+
+    export function defaultTransition_swelling(out: Camera.Snapshot, t: number, source: Camera.Snapshot, target: Camera.Snapshot, ease: [easeIn: number, easeOut: number] = DEFAULT_EASE): void {
+        t = easeAdjustment(t, ease);
+
         Camera.copySnapshot(out, target);
 
         // Rotate up
@@ -177,6 +198,23 @@ namespace CameraTransitionManager {
         Vec3.scale(_sourcePosition, _sourcePosition, dist);
 
         Vec3.add(out.position, out.target, _sourcePosition);
+    }
+}
+
+/** Compute relative transition quotient from relative time, for ease-in/ease-out effect.
+ * `ease = [0.5, 0.5]` gives a curve very similar to "ease-in-out" aka "cubic-bezier(.42,0,.58,1)" in CSS */
+function easeAdjustment(t: number, ease: [easeIn: number, easeOut: number]): number {
+    const [tIn, tOut] = ease;
+    const vMax = 1 / (1 - 0.5 * tIn - 0.5 * tOut);
+    if (t < tIn) {
+        // Ease-in phase
+        return 0.5 * vMax * t ** 2 / tIn;
+    } else if (t <= 1 - tOut) {
+        // Linear phase
+        return 0.5 * vMax * tIn + (t - tIn) * vMax;
+    } else {
+        // Ease-out phase
+        return 1 - 0.5 * vMax * (1 - t) ** 2 / tOut;
     }
 }
 
@@ -242,3 +280,16 @@ function cameraTargetDistance(visRadius: number, mode: Camera.Mode, fov: number)
     else // perspective
         return visRadius / Math.sin(fov / 2);
 }
+
+/** This adjustment to transition quotient (0-1) ensures that transition speed relative to radius is constant during the transition.
+ * Only to be applied to position and radius interpolation, not needed for angles.
+ * This function assumes linear interpolation of radius. For other interpolation methods, more complicated formula will be needed. */
+function constRelSpeedQuotientAdj_linRadIntp(t: number, r0: number, r1: number): number {
+    if (Math.abs((r0 - r1) / (r0 + r1)) <= 1e-3) {
+        // Special case for r0===r1
+        return t;
+    }
+    return r0 / (r1 - r0) * ((r1 / r0) ** t - 1); // = a / b * ((1 + b / a) ** t - 1), where a = r0, b = r1 - r0
+}
+
+console.log('DEFAULT_EASE', ...DEFAULT_EASE, CameraTransitionManager.defaultTransition.name)
