@@ -38,10 +38,10 @@ export class MolComponentSnapshotMarkdownModel extends PluginComponent {
         });
     }
 
-    async mount(root: HTMLElement) {
+    async mount(root: HTMLElement, options?: { hideNavigation?: boolean }) {
         this.root = root;
 
-        createRoot(root).render(<MolComponentSnapshotMarkdownUI model={this} />);
+        createRoot(root).render(<MolComponentSnapshotMarkdownUI model={this} hideNavigation={options?.hideNavigation} />);
 
         let currentViewer: MolComponentViewerModel | undefined = undefined;
         let sub: { unsubscribe: () => void } | undefined = undefined;
@@ -69,7 +69,7 @@ export class MolComponentSnapshotMarkdownModel extends PluginComponent {
     }
 }
 
-export function MolComponentSnapshotMarkdownUI({ model }: { model: MolComponentSnapshotMarkdownModel }) {
+export function MolComponentSnapshotMarkdownUI({ model, hideNavigation }: { model: MolComponentSnapshotMarkdownModel, hideNavigation?: boolean }) {
     const state = useBehavior(model.state);
 
     if (state.all.length === 0) {
@@ -79,11 +79,11 @@ export function MolComponentSnapshotMarkdownUI({ model }: { model: MolComponentS
     }
 
     return <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <div>
+        {!hideNavigation && <div>
             <button onClick={() => model.viewer?.model.plugin?.managers.snapshot.applyNext(-1)} style={{ marginRight: 8 }}>Prev</button>
             <button onClick={() => model.viewer?.model.plugin?.managers.snapshot.applyNext(1)} style={{ marginRight: 8 }}>Next</button>
             {typeof state.index === 'number' ? state.index + 1 : '-'}/{state.all.length}
-        </div>
+        </div>}
         <div style={{ flexGrow: 1, overflow: 'hidden', overflowY: 'auto', position: 'relative' }}>
             <div style={{ position: 'absolute', inset: 0 }}>
                 <PluginReactContext.Provider value={model.viewer?.model.plugin as any}>
@@ -102,7 +102,8 @@ export class MolComponentSnapshotMarkdownViewer extends HTMLElement {
             context: { name: this.getAttribute('context-name') ?? undefined },
             viewerName: this.getAttribute('viewer-name') ?? undefined,
         });
-        await this.model.mount(this);
+        const hideNavigation = this.hasAttribute('hide-navigation');
+        await this.model.mount(this, { hideNavigation });
     }
 
     disconnectedCallback() {

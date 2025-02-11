@@ -8,12 +8,15 @@ import { getMolComponentContext } from './context';
 import './index.html';
 import './elements/snapshot-markdown';
 import './elements/viewer';
+import { foo, getDefaultMVSSnapshotProvider } from './pdb-connect-mvs/mvs-snapshot-provider';
 require('../../mol-plugin-ui/skin/light.scss');
 
 export class MolComponents {
     getContext(name?: string) {
         return getMolComponentContext({ name });
     }
+    getDefaultMVSSnapshotProvider = getDefaultMVSSnapshotProvider;
+    foo = foo;
 }
 
 (window as any).mc = new MolComponents();
