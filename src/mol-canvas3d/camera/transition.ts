@@ -4,11 +4,14 @@
  * @author David Sehnal <david.sehnal@gmail.com>
  */
 
-import { Camera } from '../camera';
-import { Quat, Vec3 } from '../../mol-math/linear-algebra';
 import { lerp } from '../../mol-math/interpolate';
+import { Quat, Vec3 } from '../../mol-math/linear-algebra';
+import { Camera } from '../camera';
+
 
 export { CameraTransitionManager };
+
+
 
 class CameraTransitionManager {
     private t = 0;
@@ -84,6 +87,7 @@ class CameraTransitionManager {
     }
 }
 
+
 namespace CameraTransitionManager {
     export type TransitionFunc = (out: Camera.Snapshot, t: number, source: Camera.Snapshot, target: Camera.Snapshot) => void
 
@@ -132,4 +136,66 @@ namespace CameraTransitionManager {
         out.fov = lerp(source.fov, target.fov, t);
         out.fog = lerp(source.fog, target.fog, t);
     }
+
+    // export function defaultTransition_linear_ease(out: Camera.Snapshot, t: number, source: Camera.Snapshot, target: Camera.Snapshot, ease: [easeIn: number, easeOut: number] = DEFAULT_EASE): void {
+    //     t = easeAdjustment(t, ease);
+    //     return defaultTransition_orig(out, t, source, target);
+    // }
+
+    // export function defaultTransition_linear_constRelSpeed_ease(out: Camera.Snapshot, t: number, source: Camera.Snapshot, target: Camera.Snapshot, ease: [easeIn: number, easeOut: number] = DEFAULT_EASE): void {
+    //     t = easeAdjustment(t, ease);
+    //     const distSource = Vec3.distance(source.target, source.position);
+    //     const distTarget = Vec3.distance(target.target, target.position);
+    //     const q = constRelSpeedQuotientAdj_linRadIntp(t, distSource, distTarget);
+    //     // console.log('adj', q, t, `, R ${distSource}->${distTarget}`)
+    //     // TODO calculate from vis.radius, not dist
+    //     // TODO only apply constRelSpeedLinRadIntpT2Q to position and distance interpolation, not needed for angles
+    //     return defaultTransition_orig(out, q, source, target);
+    // }
+
+    // export function defaultTransition_leaping(out: Camera.Snapshot, t: number, source: Camera.Snapshot, target: Camera.Snapshot, ease: [easeIn: number, easeOut: number] = DEFAULT_EASE): void {
+    //     t = easeAdjustment(t, ease);
+
+    //     Camera.copySnapshot(out, target);
+
+    //     // Rotate up
+    //     Quat.slerp(_rotUp, Quat.Identity, Quat.rotationTo(_rotUp, source.up, target.up), t);
+    //     Vec3.transformQuat(out.up, source.up, _rotUp);
+
+    //     // Interpolate target
+    //     Vec3.lerp(out.target, source.target, target.target, t);
+
+    //     const shift = Vec3.distance(source.target, target.target);
+
+    //     // Interpolate radius
+    //     out.radius = swellingRadiusInterpolationSmart(source.radius, target.radius, shift, t);
+    //     // TODO take change of `clipFar` into account
+    //     out.radiusMax = swellingRadiusInterpolationSmart(source.radiusMax, target.radiusMax, shift, t);
+
+    //     // Interpolate fov & fog
+    //     out.fov = lerp(source.fov, target.fov, t);
+    //     out.fog = lerp(source.fog, target.fog, t);
+    //     // TODO fix Canvas3D.setProps() setting FOV instantly before transition starts!
+
+    //     // Interpolate distance (indirectly via visible sphere radius)
+    //     const rVisSource = visibleSphereRadius(source);
+    //     const rVisTarget = visibleSphereRadius(target);
+    //     const rVis = swellingRadiusInterpolationSmart(rVisSource, rVisTarget, shift, t);
+    //     const dist = cameraTargetDistance(rVis, out.mode, out.fov);
+
+    //     // Rotate between source and targer direction
+    //     Vec3.sub(_sourcePosition, source.position, source.target);
+    //     Vec3.normalize(_sourcePosition, _sourcePosition);
+
+    //     Vec3.sub(_targetPosition, target.position, target.target);
+    //     Vec3.normalize(_targetPosition, _targetPosition);
+
+    //     Quat.rotationTo(_rotDist, _sourcePosition, _targetPosition);
+    //     Quat.slerp(_rotDist, Quat.Identity, _rotDist, t);
+
+    //     Vec3.transformQuat(_sourcePosition, _sourcePosition, _rotDist);
+    //     Vec3.scale(_sourcePosition, _sourcePosition, dist);
+
+    //     Vec3.add(out.position, out.target, _sourcePosition);
+    // }
 }
