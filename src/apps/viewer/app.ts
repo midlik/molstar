@@ -59,6 +59,7 @@ import '../../mol-util/polyfill';
 import { ObjectKeys } from '../../mol-util/type-helpers';
 import { OpenFiles } from '../../mol-plugin-state/actions/file';
 import { StringLike } from '../../mol-io/common/string-like';
+import { builderDemo2, builderDemo3 } from '../../extensions/mvs/tree/mvs/mvs-builder';
 
 export { PLUGIN_VERSION as version } from '../../mol-plugin/version';
 export { consoleStats, setDebugMode, setProductionMode, setTimingMode, isProductionMode, isDebugMode, isTimingMode } from '../../mol-util/debug';
@@ -161,7 +162,8 @@ export class Viewer {
             layout: {
                 initial: {
                     isExpanded: o.layoutIsExpanded,
-                    showControls: o.layoutShowControls,
+                    // showControls: o.layoutShowControls,
+                    showControls: false,
                     controlsDisplay: o.layoutControlsDisplay,
                     regionState: {
                         bottom: 'full',
@@ -229,6 +231,16 @@ export class Viewer {
             }
         });
         plugin.canvas3d?.setProps({ illumination: { enabled: o.illumination } });
+
+        setTimeout(async () => {
+            // plugin.canvas3d!.camera.stateChanged.subscribe(s => console.log('stateChanged', s))
+            // const data = builderDemo3();
+            // console.log(MVSData.toMVSJ(data))
+            // await loadMVS(plugin, data);
+            // setTimeout(() => {
+            //     console.log('camera:', plugin.canvas3d?.camera.getSnapshot())
+            // }, 1000);
+        }, 1000);
         return new Viewer(plugin);
     }
 

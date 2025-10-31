@@ -135,6 +135,7 @@ export class Camera implements ICamera {
     }
 
     getTargetDistance(radius: number) {
+        console.log('getTargetDistance', radius,'this.minTargetDistance', this.minTargetDistance, Math.max(this.minTargetDistance / this.scale, Camera.targetDistance(radius, this.state.mode, this.state.fov, this.viewport.width, this.viewport.height)))
         return Math.max(this.minTargetDistance / this.scale, Camera.targetDistance(radius, this.state.mode, this.state.fov, this.viewport.width, this.viewport.height));
     }
 
@@ -152,6 +153,7 @@ export class Camera implements ICamera {
         state.radius = r;
         state.position = Vec3.clone(this.newPosition);
         if (up) Vec3.matchDirection(state.up, up, state.up);
+        console.log('getFocus', state)
 
         return state;
     }
@@ -312,7 +314,7 @@ export namespace Camera {
             radiusMax: 10,
             fog: 50,
             clipFar: true,
-            minNear: 5,
+            minNear: 2.4,//
             minFar: 0,
         };
     }

@@ -33,7 +33,7 @@ import { MVSTreeSchema } from './tree/mvs/mvs-tree';
 
 
 const DefaultFocusOptions = {
-    minRadius: 5,
+    minRadius: 0.0005,
     extraRadius: 0,
 };
 const DefaultCanvasBackgroundColor = ColorNames.white;
@@ -82,7 +82,7 @@ function snapshotFocusInfoFromMvsFocuses(focuses: { target: StateObjectSelector,
     const lastFocus = (focuses.length > 0) ? focuses[focuses.length - 1] : undefined;
     const direction = lastFocus?.params.direction ?? MVSTreeSchema.nodes.focus.params.fields.direction.default;
     const up = lastFocus?.params.up ?? MVSTreeSchema.nodes.focus.params.fields.up.default;
-    return {
+    const out = {
         targets: focuses.map<PluginState.SnapshotFocusTargetInfo>(f => ({
             targetRef: f.target.ref === '-=root=-' ? undefined : f.target.ref, // need to treat root separately so it does not include invisible structure parts etc.
             radius: f.params.radius ?? undefined,
@@ -92,6 +92,8 @@ function snapshotFocusInfoFromMvsFocuses(focuses: { target: StateObjectSelector,
         direction: Vec3.create(...direction),
         up: Vec3.create(...up),
     };
+    console.log('snapshotFocusInfoFromMvsFocuses', out)
+    return out;
 }
 
 /** Adjust `sceneRadiusFactor` property so that the current scene is not cropped */

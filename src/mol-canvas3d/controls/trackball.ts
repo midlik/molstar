@@ -100,7 +100,7 @@ export const TrackballControlsParams = {
         off: PD.EmptyGroup(),
         on: PD.Group({
             minDistanceFactor: PD.Numeric(0),
-            minDistancePadding: PD.Numeric(5),
+            minDistancePadding: PD.Numeric(3),
             maxDistanceFactor: PD.Numeric(10),
             maxDistanceMin: PD.Numeric(20)
         })

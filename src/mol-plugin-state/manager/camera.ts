@@ -25,7 +25,7 @@ import { changeCameraRotation, structureLayingTransform } from './focus-camera/o
 
 // TODO: make this customizable somewhere?
 const DefaultCameraFocusOptions = {
-    minRadius: 5,
+    minRadius: 0.1,
     extraRadius: 4,
     durationMs: 250,
 };
@@ -139,6 +139,7 @@ export class CameraManager {
             targets: options.targets?.map(t => ({ ...t, extraRadius: t.extraRadius ?? DefaultCameraFocusOptions.extraRadius })),
             minRadius: options.minRadius ?? DefaultCameraFocusOptions.minRadius,
         });
+        console.log('focusObject', options, snapshot)
         this.plugin.canvas3d.requestCameraReset({ snapshot, durationMs: options.durationMs ?? DefaultCameraFocusOptions.durationMs });
     }
 

@@ -51,7 +51,7 @@ function snapshotFromSphereAndDirections(camera: Camera, options: { center: Vec3
     const distance = camera.getTargetDistance(radius);
     const deltaDirection = Vec3.setMagnitude(_tmpVec, direction, distance);
     const position = Vec3.sub(Vec3(), target, deltaDirection);
-    return { target, position, up, radius };
+    return { target, position, up, radius, minNear: 2.46 };
 }
 
 /** Return the bounding sphere of a plugin state object cell */

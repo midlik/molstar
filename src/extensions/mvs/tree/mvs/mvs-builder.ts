@@ -10,7 +10,7 @@ import { GlobalMetadata, MVSData_State, Snapshot, SnapshotMetadata } from '../..
 import { MVSAnimationNodeParams, MVSAnimationSubtree } from '../animation/animation-tree';
 import { CustomProps } from '../generic/tree-schema';
 import { MVSKind, MVSNode, MVSNodeParams, MVSSubtree } from './mvs-tree';
-import { ColorT, PrimitivePositionT } from './param-types';
+import { ColorT, ComponentExpressionT, PrimitivePositionT } from './param-types';
 
 
 /** Create a new MolViewSpec builder containing only a root node. Example of MVS builder usage:
@@ -507,6 +507,72 @@ export function builderDemo() {
 
     cif.modelStructure({ model_index: 0 }).transform({ translation: [30, 0, 0] }).component().representation().color({ color: '#ff88bb' });
     cif.modelStructure({ model_index: 0 as any }).transform({ translation: [60, 0, 0], rotation: [0, 1, 0, -1, 0, 0, 0, 0, 1] }).component().representation().color({ color: '#aa0077' });
+
+    return builder.getState();
+}
+
+/** Demonstration of usage of MVS builder */
+export function builderDemo2() {
+    const builder = createMVSBuilder(); const struct = builder
+        .download({ url: 'https://www.ebi.ac.uk/pdbe/entry-files/download/2e2o.bcif' })
+        .parse({ format: 'bcif' })
+        .modelStructure();
+
+    const focusSelection = [
+        // { label_asym_id: 'B', label_atom_id: 'O1' },
+        // { label_asym_id: 'B', label_atom_id: 'O4' },
+        // { label_asym_id: 'B', label_atom_id: 'C2' },
+        // { label_asym_id: 'B', label_atom_id: 'O2' },
+        // { label_asym_id: 'B', label_atom_id: 'O6' },
+        { label_asym_id: 'B' },
+    ];
+
+    const polymer = struct
+        .component({ selector: 'polymer' })
+        .representation({ type: 'cartoon' })
+        .color({ color: '#4fc64f' });
+    const ligand = struct
+        .component({ selector: 'branched' })
+        .representation({ type: 'spacefill', size_factor: 1 })
+        .color({ color: '#4fc64f' })
+        .color({ color: 'orange', selector: focusSelection });
+
+    struct
+        .primitives({ opacity: 0.4 })
+        .sphere({ center: { expression_schema: 'all_atomic', expressions: focusSelection }, color: '#4fc64f' });
+
+    struct
+        .component({ selector: focusSelection })
+        .focus({ direction: [-0.22, -0.32, 0.92], up: [0, 0.90, 0.44], radius_factor: 1.01 });
+
+    // struct.component({ selector: 'branched' }).focus({ direction: [0,0,1], up: [0,0,1], radius_factor: 3 });
+    // builder.camera({ target: [8, 5, 54], position: [8, 5.001, 54], up: [0, 1, 0] });
+
+    return builder.getState();
+}
+
+export function builderDemo3() {
+    const builder = createMVSBuilder(); const struct = builder
+        .download({ url: 'https://pdb-ihm.org/cif/9a8n.cif' })
+        // .download({ url: '/tmp/9a8n.cif' })
+        .parse({ format: 'mmcif' })
+        .modelStructure();
+
+    const focusSelection = [
+        { label_asym_id: 'A', beg_label_seq_id: 1, end_label_seq_id: 70 },
+        // { label_asym_id: 'A' },
+        // { label_asym_id: 'B' },
+    ] satisfies ComponentExpressionT[];
+
+    struct.component({ selector: 'all' }).representation({ type: 'spacefill' });
+
+    struct
+        .primitives({ opacity: 0.4 })
+        .sphere({ center: { expression_schema: 'all_atomic', expressions: focusSelection }, color: '#4fc64f' });
+
+    struct
+        .component({ selector: focusSelection })
+        .focus({ direction: [-0.22, -0.32, 0.92], up: [0, 0.90, 0.44], radius_factor: 1.01 });
 
     return builder.getState();
 }
