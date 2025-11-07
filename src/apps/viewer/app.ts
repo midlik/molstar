@@ -59,6 +59,7 @@ import '../../mol-util/polyfill';
 import { ObjectKeys } from '../../mol-util/type-helpers';
 import { OpenFiles } from '../../mol-plugin-state/actions/file';
 import { StringLike } from '../../mol-io/common/string-like';
+import { complexViewDemo } from '../../extensions/mvs/complex-view-poc';
 
 export { PLUGIN_VERSION as version } from '../../mol-plugin/version';
 export { consoleStats, setDebugMode, setProductionMode, setTimingMode, isProductionMode, isDebugMode, isTimingMode } from '../../mol-util/debug';
@@ -161,7 +162,8 @@ export class Viewer {
             layout: {
                 initial: {
                     isExpanded: o.layoutIsExpanded,
-                    showControls: o.layoutShowControls,
+                    // showControls: o.layoutShowControls,
+                    showControls: false,
                     controlsDisplay: o.layoutControlsDisplay,
                     regionState: {
                         bottom: 'full',
@@ -229,6 +231,10 @@ export class Viewer {
             }
         });
         plugin.canvas3d?.setProps({ illumination: { enabled: o.illumination } });
+
+        setTimeout(async () => {
+            await complexViewDemo(plugin, {});
+        }, 1000);
         return new Viewer(plugin);
     }
 
