@@ -6,8 +6,11 @@ import { loadMVS } from './load';
 import { MVSData } from './mvs-data';
 import { createMVSBuilder, Root } from './tree/mvs/mvs-builder';
 import { SortedArray } from '../../mol-data/int';
-import { ComponentExpressionT } from './tree/mvs/param-types';
+import { ComponentExpressionT, HexColorT } from './tree/mvs/param-types';
 import { StructureLookup3D } from '../../mol-model/structure/structure/util/lookup3d';
+import { Color } from '../../mol-util/color';
+import { ColorLists } from '../../mol-util/color/lists';
+import { arrayDistinct } from '../../mol-util/array';
 
 
 function buildTrajectoryMvs(builder: Root, params: { pdbId: string }) {
@@ -19,6 +22,8 @@ function buildTrajectoryMvs(builder: Root, params: { pdbId: string }) {
 function buildStructMvs(builder: Root, params: { pdbId: string }) {
     return buildTrajectoryMvs(builder, params).modelStructure();
 }
+
+const colors = ColorLists['many-distinct'].list.map(Color.fromColorListEntry)
 
 /** Demonstration of usage of MVS builder */
 export async function complexViewDemo(plugin: PluginContext, { pdbId = '1hda' }: { pdbId?: string }) {
@@ -42,9 +47,13 @@ export async function complexViewDemo(plugin: PluginContext, { pdbId = '1hda' }:
 
     const anim = builder.animation({ include_camera: true });
 
+    const polymerColors: Record<string, Color> = {};
+    let polymerColorsCounter = 0;
+
     for (const record of Object.values(chainRecords)) {
         const translation = Vec3.sub(Vec3(), record.center, globalCenter);
-        Vec3.setMagnitude(translation, translation, Vec3.magnitude(translation) + globalRadius);
+        // Scale:
+        // Vec3.setMagnitude(translation, translation, Vec3.magnitude(translation) + globalRadius);
         translations[record.key] = translation;
 
         const transformRef = `transform-${record.key}`;
@@ -68,16 +77,40 @@ export async function complexViewDemo(plugin: PluginContext, { pdbId = '1hda' }:
             easing: 'cubic-in-out',
         });
 
+        const annotUri = `data:text/plain,
+        data_annotations
+        loop_
+        _annotations.instance_id
+        _annotations.label_asym_id
+        _annotations.label_seq_id
+        _annotations.atom_id
+        _annotations.color 
+        ` + record.interfaceResidues.map(s => `${s.instance_id ?? '.'} ${s.label_asym_id ?? '.'} ${s.label_seq_id ?? '.'} ${s.atom_id ?? '.'} lightgreen`).join('\n');
+
+        // const polymerColor = '#1b9e77';
+        const entityColor = polymerColors[record.polymerEntityId] ??= (colors[(polymerColorsCounter++) % colors.length]);
+        const polymerColor = Color.toHexStyle(entityColor) as HexColorT;
+        const interfaceColor = Color.toHexStyle(Color.lighten(entityColor, 2)) as HexColorT;
+        // const ligandColor = '#e06633';
+        const ligandColor = '#ffffff';
+        const ligandInterfaceColor = Color.toHexStyle(Color.lighten(Color.fromHexStyle(ligandColor), 2)) as HexColorT;
         struct
             .component({ selector: { label_asym_id: record.polymerLabelChain } })
             .representation({ type: 'surface' }) // TODO gaussian surface?
-            .color({ color: '#1b9e77' })
-            // .color({ color: 'lightgreen', selector: record.interfaceResidues }); // TODO try if color_from_uri will give better performance
+            .color({ color: polymerColor })
+            .color({ color: interfaceColor, selector: record.interfaceResidues });
+        // TODO to use `color` with per-atom selections, implement caching in MultilayerColorTheme, otherwise performance will suck
+        // TODO to use `color_from_uri`, set preferSmoothing: false in MVSAnnotationColorTheme, otherwise performance will suck
+        // .colorFromUri({
+        //     uri: annotUri,
+        //     format: 'cif',
+        //     schema: 'all_atomic',
+        // });
 
         struct
             .component({ selector: record.ligandLabelChains.map(label_asym_id => ({ label_asym_id })) })
             .representation({ type: 'surface' }) // TODO gaussian surface?
-            .color({ color: '#E06633' });
+            .color({ color: ligandColor });
     }
 
     const maxTranslation = Math.max(...Object.values(translations).map(Vec3.magnitude));
@@ -89,14 +122,6 @@ export async function complexViewDemo(plugin: PluginContext, { pdbId = '1hda' }:
         ...getFocusedCamera(globalCenter, globalRadius + maxTranslation, direction, up),
         ref: 'camera',
     });
-    // anim.interpolate({
-    //     target_ref: 'camera',
-    //     property: 'position',
-    //     kind: 'vec3',
-    //     end: getFocusedCamera(globalCenter, globalRadius + maxTranslation, direction, up).position,
-    //     start_ms: 2000,
-    //     duration_ms: 2000,
-    // });
 
     const snapshot = builder.getSnapshot({ linger_duration_ms: 6000 });
     const finalMVS = MVSData.createMultistate([snapshot]);
@@ -125,6 +150,8 @@ interface ChainRecord {
     size: number,
     interfaceResidues: ComponentExpressionT[],
 }
+
+const InterfaceDefinitionRadius = 5;
 
 function getAuthChainRecords(struct: Structure) {
     // TODO solve this for assemblies (multiple copies of one polymer chain!)
@@ -164,8 +191,10 @@ function getAuthChainRecords(struct: Structure) {
             // other types consider as ligands for now
             record.ligandLabelChains.push(labelChainId);
         }
-        // selectResidues(unit, loc => StructureProperties.residue.label_seq_id(loc) % 2 === 0, record.interfaceResidues);
-        // selectResidues(unit, loc => isInterface(loc, structureLookup, 0), record.interfaceResidues);
+        // selectResiduesInUnit(struct, unit, loc => StructureProperties.residue.label_seq_id(loc) % 2 === 0, record.interfaceResidues);
+        // selectAtomsInUnit(struct, unit, loc => StructureProperties.atom.id(loc) % 2 === 0, record.interfaceResidues);
+        // selectResiduesInUnit(struct, unit, loc => isInterface(loc, structureLookup, InterfaceDefinitionRadius), record.interfaceResidues);
+        selectAtomsInUnit(struct, unit, loc => isInterface(loc, structureLookup, InterfaceDefinitionRadius), record.interfaceResidues); // TODO store separately for polymer and ligands
     }
     for (const rec of Object.values(out)) {
         if (!rec.polymerEntityId) throw new Error(`AssertionError: key ${rec.key} has no polymer units`);
@@ -173,8 +202,8 @@ function getAuthChainRecords(struct: Structure) {
     return out;
 }
 
-function selectResidues(unit: Unit, predicate: (loc: StructureElement.Location) => boolean, out: ComponentExpressionT[]) {
-    const loc: StructureElement.Location = StructureElement.Location.create(undefined, unit);
+function selectResiduesInUnit(struct: Structure, unit: Unit, predicate: (loc: StructureElement.Location) => boolean, out: ComponentExpressionT[]) {
+    const loc: StructureElement.Location = StructureElement.Location.create(struct, unit, unit.elements[0]);
     let lastSeqId = NaN;
     const instance_id = StructureProperties.unit.instance_id(loc);
     const label_asym_id = StructureProperties.chain.label_asym_id(loc);
@@ -190,13 +219,39 @@ function selectResidues(unit: Unit, predicate: (loc: StructureElement.Location) 
     return out;
 }
 
-// function isInterface(loc: StructureElement.Location, structureLookup: StructureLookup3D, radius: number): boolean {
-//     const x = StructureProperties.atom.x(loc);
-//     const y = StructureProperties.atom.y(loc);
-//     const z = StructureProperties.atom.z(loc);
-//     loc.unit.id;
-//     const result = structureLookup.findUnitIndices(x, y, z, radius);
-//     console.log(`${loc.unit.id}:`, ...result.indices)
+function selectAtomsInUnit(struct: Structure, unit: Unit, predicate: (loc: StructureElement.Location) => boolean, out: ComponentExpressionT[]) {
+    const loc: StructureElement.Location = StructureElement.Location.create(struct, unit, unit.elements[0]);
+    const instance_id = StructureProperties.unit.instance_id(loc);
+    for (let i = 0; i < unit.elements.length; i++) {
+        loc.element = unit.elements[i];
+        const matches = predicate(loc);
+        if (!matches) continue;
+        const atom_id = StructureProperties.atom.id(loc);
+        out.push({ instance_id, atom_id });
+    }
+    return out;
+}
 
-//     return true;
-// }
+const _seenUnits = new Set<number>();
+const _otherLoc = StructureElement.Location.create();
+
+function isInterface(loc: StructureElement.Location, structureLookup: StructureLookup3D, radius: number): boolean {
+    const x = StructureProperties.atom.x(loc);
+    const y = StructureProperties.atom.y(loc);
+    const z = StructureProperties.atom.z(loc);
+    const surrounding = structureLookup.find(x, y, z, radius);
+    const instance_id = StructureProperties.unit.instance_id(loc);
+    const auth_asym_id = StructureProperties.chain.auth_asym_id(loc);
+    _seenUnits.clear();
+    _otherLoc.structure = loc.structure;
+    return surrounding.units.slice(0, surrounding.count).some((unit: Unit) => {
+        if (_seenUnits.has(unit.id)) return false;
+        _seenUnits.add(unit.id);
+        if (unit.id === loc.unit.id) return false;
+        _otherLoc.unit = unit;
+        _otherLoc.element = unit.elements[0];
+        if (StructureProperties.entity.type(_otherLoc) === 'water') return false;
+        if (StructureProperties.unit.instance_id(_otherLoc) !== instance_id) return true;
+        if (StructureProperties.chain.auth_asym_id(_otherLoc) !== auth_asym_id) return true;
+    });
+}
