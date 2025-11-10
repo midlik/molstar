@@ -1,16 +1,14 @@
-import { dir } from 'console';
+import { Sphere3D } from '../../mol-math/geometry';
 import { Vec3 } from '../../mol-math/linear-algebra';
 import { Structure, StructureElement, StructureProperties, Unit } from '../../mol-model/structure';
+import { StructureLookup3D } from '../../mol-model/structure/structure/util/lookup3d';
 import { PluginContext } from '../../mol-plugin/context';
+import { Color } from '../../mol-util/color';
+import { ColorLists } from '../../mol-util/color/lists';
 import { loadMVS } from './load';
 import { MVSData } from './mvs-data';
 import { createMVSBuilder, Root } from './tree/mvs/mvs-builder';
-import { SortedArray } from '../../mol-data/int';
 import { ComponentExpressionT, HexColorT } from './tree/mvs/param-types';
-import { StructureLookup3D } from '../../mol-model/structure/structure/util/lookup3d';
-import { Color } from '../../mol-util/color';
-import { ColorLists } from '../../mol-util/color/lists';
-import { arrayDistinct } from '../../mol-util/array';
 
 
 function buildTrajectoryMvs(builder: Root, params: { pdbId: string }) {
@@ -23,7 +21,7 @@ function buildStructMvs(builder: Root, params: { pdbId: string }) {
     return buildTrajectoryMvs(builder, params).modelStructure();
 }
 
-const colors = ColorLists['many-distinct'].list.map(Color.fromColorListEntry)
+const colors = ColorLists['many-distinct'].list.map(Color.fromColorListEntry);
 
 /** Demonstration of usage of MVS builder */
 export async function complexViewDemo(plugin: PluginContext, { pdbId = '1hda' }: { pdbId?: string }) {
@@ -36,31 +34,48 @@ export async function complexViewDemo(plugin: PluginContext, { pdbId = '1hda' }:
     const structData = structRef.cell.obj?.data;
     if (!structData) throw new Error('No structure data.');
 
-    builder = createMVSBuilder();
+    const components = getComponentRecords(structData);
+    console.log(components)
+    const openingSnapshot = makeSnapshot(pdbId, 'open', { components, globalSphere: structData.boundary.sphere });
+    const closingSnapshot = makeSnapshot(pdbId, 'close', { components, globalSphere: structData.boundary.sphere });
+    const finalMVS = MVSData.createMultistate([openingSnapshot, closingSnapshot]);
+    await loadMVS(plugin, finalMVS);
+    return finalMVS;
+}
+
+function makeSnapshot(pdbId: string, animationDirection: 'open' | 'close', data: { components: ComponentRecords, globalSphere: Sphere3D }) {
+    const { center: globalCenter, radius: globalRadius } = data.globalSphere;
+
+    const builder = createMVSBuilder();
     const traj = buildTrajectoryMvs(builder, { pdbId });
 
-    const chainRecords = getAuthChainRecords(structData);
-    console.log(chainRecords)
-    const { center: globalCenter, radius: globalRadius } = structData.boundary.sphere;
-
-    const translations: Record<string, Vec3> = {}
+    const translations: Record<string, Vec3> = {};
 
     const anim = builder.animation({ include_camera: true });
 
     const polymerColors: Record<string, Color> = {};
     let polymerColorsCounter = 0;
 
-    for (const record of Object.values(chainRecords)) {
+    const durations = {
+        start: 1000,
+        transition: 4000,
+        linger: 1000,
+    };
+    for (const record of Object.values(data.components)) {
         const translation = Vec3.sub(Vec3(), record.center, globalCenter);
         // Scale:
-        // Vec3.setMagnitude(translation, translation, Vec3.magnitude(translation) + globalRadius);
+        Vec3.setMagnitude(translation, translation, Vec3.magnitude(translation) + globalRadius);
         translations[record.key] = translation;
+
+        let translationStart = [0, 0, 0] as [number, number, number];
+        let translationEnd = translation as number[] as [number, number, number];
+        if (animationDirection === 'close') [translationStart, translationEnd] = [translationEnd, translationStart];
 
         const transformRef = `transform-${record.key}`;
         const struct = traj
             .modelStructure()
             .transform({
-                translation: [0, 0, 0],
+                translation: translationStart,
                 ref: transformRef,
             });
 
@@ -68,12 +83,10 @@ export async function complexViewDemo(plugin: PluginContext, { pdbId = '1hda' }:
             target_ref: transformRef,
             property: 'translation',
             kind: 'vec3',
-            start: [0, 0, 0],
-            end: translation,
-            start_ms: 1000,
-            duration_ms: 4000,
-            alternate_direction: true,
-            frequency: 2,
+            start: translationStart,
+            end: translationEnd,
+            start_ms: durations.start,
+            duration_ms: durations.transition,
             easing: 'cubic-in-out',
         });
 
@@ -115,19 +128,15 @@ export async function complexViewDemo(plugin: PluginContext, { pdbId = '1hda' }:
 
     const maxTranslation = Math.max(...Object.values(translations).map(Vec3.magnitude));
 
-    const direction = Vec3.create(0, 0, -1);
+    const dir = Vec3.create(0, 0, -1);
     const up = Vec3.create(0, 1, 0);
-    // TODO compute final camera from translated chain bounding spheres
+    // TODO compute final camera from translated chain bounding spheres?
     builder.camera({
-        ...getFocusedCamera(globalCenter, globalRadius + maxTranslation, direction, up),
+        ...getFocusedCamera(globalCenter, globalRadius + maxTranslation, dir, up),
         ref: 'camera',
     });
 
-    const snapshot = builder.getSnapshot({ linger_duration_ms: 6000 });
-    const finalMVS = MVSData.createMultistate([snapshot]);
-    await loadMVS(plugin, finalMVS);
-    return finalMVS;
-
+    return builder.getSnapshot({ key: `${pdbId}-${animationDirection}`, linger_duration_ms: durations.start + durations.transition + durations.linger });
 }
 
 function getFocusedCamera(center: Vec3, radius: number, direction: Vec3 = Vec3.create(0, 0, -1), up: Vec3 = Vec3.create(0, 1, 0)) {
@@ -139,7 +148,7 @@ function getFocusedCamera(center: Vec3, radius: number, direction: Vec3 = Vec3.c
     }
 }
 
-interface ChainRecord {
+interface ComponentRecord {
     key: string,
     authChainId: string,
     polymerEntityId: string,
@@ -150,14 +159,17 @@ interface ChainRecord {
     size: number,
     interfaceResidues: ComponentExpressionT[],
 }
+interface ComponentRecords {
+    [componentKey: string]: ComponentRecord,
+}
 
 const InterfaceDefinitionRadius = 5;
 
-function getAuthChainRecords(struct: Structure) {
+function getComponentRecords(struct: Structure): ComponentRecords {
     // TODO solve this for assemblies (multiple copies of one polymer chain!)
     // TODO solve this for 3d11 (key has no polymer units)
     const structureLookup = struct.lookup3d;
-    const out: { [authChainId: string]: ChainRecord } = {};
+    const out: ComponentRecords = {};
     const loc: StructureElement.Location = StructureElement.Location.create(struct);
     for (const unit of struct.units) {
         loc.unit = unit;
