@@ -71,9 +71,10 @@ function makeSnapshot(pdbId: string, animationDirection: 'open' | 'close', data:
         let translationEnd = translation as number[] as [number, number, number];
         if (animationDirection === 'close') [translationStart, translationEnd] = [translationEnd, translationStart];
 
+        const structureRef = `struct-${record.key}`;
         const transformRef = `transform-${record.key}`;
         const struct = traj
-            .modelStructure()
+            .modelStructure({ ref: structureRef })
             .transform({
                 translation: translationStart,
                 ref: transformRef,
@@ -124,7 +125,15 @@ function makeSnapshot(pdbId: string, animationDirection: 'open' | 'close', data:
             .component({ selector: record.ligandLabelChains.map(label_asym_id => ({ label_asym_id })) })
             .representation({ type: 'surface' }) // TODO gaussian surface?
             .color({ color: ligandColor });
+        // struct.primitives({ opacity: 0.5 }).sphere({ center: { label_asym_id: record.polymerLabelChain } });
     }
+    // const prims = builder.primitives({ color: '#808080' });
+    // prims.tube({
+    //     start: { structure_ref: `struct-A:1_555`, expression_schema: 'all_atomic', expressions: [{ label_asym_id: 'A' }] },
+    //     end: { structure_ref: `struct-B:1_555`, expression_schema: 'all_atomic', expressions: [{ label_asym_id: 'B' }] },
+    //     radius: 0.5,
+    // });
+    // TODO - primitives in root should reference transformed structure coordinates
 
     const maxTranslation = Math.max(...Object.values(translations).map(Vec3.magnitude));
 
@@ -165,6 +174,14 @@ interface ComponentRecords {
 
 const InterfaceDefinitionRadius = 5;
 
+function unitKey(loc: StructureElement.Location): string | undefined {
+    const entityType = StructureProperties.entity.type(loc);
+    if (entityType === 'water') return undefined;
+    const authChainId = StructureProperties.chain.auth_asym_id(loc);
+    const instanceId = StructureProperties.unit.instance_id(loc);
+    return `${authChainId}:${instanceId}`;
+}
+
 function getComponentRecords(struct: Structure): ComponentRecords {
     // TODO solve this for assemblies (multiple copies of one polymer chain!)
     // TODO solve this for 3d11 (key has no polymer units)
@@ -179,7 +196,8 @@ function getComponentRecords(struct: Structure): ComponentRecords {
         const entityId = StructureProperties.chain.label_entity_id(loc);
         const entityType = StructureProperties.entity.type(loc);
 
-        const key = authChainId;
+        const key = unitKey(loc);
+        if (key === undefined) continue;
 
         const record = out[key] ??= {
             key,
@@ -252,18 +270,16 @@ function isInterface(loc: StructureElement.Location, structureLookup: StructureL
     const y = StructureProperties.atom.y(loc);
     const z = StructureProperties.atom.z(loc);
     const surrounding = structureLookup.find(x, y, z, radius);
-    const instance_id = StructureProperties.unit.instance_id(loc);
-    const auth_asym_id = StructureProperties.chain.auth_asym_id(loc);
     _seenUnits.clear();
     _otherLoc.structure = loc.structure;
+    const thisUnitKey = unitKey(loc);
     return surrounding.units.slice(0, surrounding.count).some((unit: Unit) => {
         if (_seenUnits.has(unit.id)) return false;
         _seenUnits.add(unit.id);
         if (unit.id === loc.unit.id) return false;
         _otherLoc.unit = unit;
         _otherLoc.element = unit.elements[0];
-        if (StructureProperties.entity.type(_otherLoc) === 'water') return false;
-        if (StructureProperties.unit.instance_id(_otherLoc) !== instance_id) return true;
-        if (StructureProperties.chain.auth_asym_id(_otherLoc) !== auth_asym_id) return true;
+        const otherUnitKey = unitKey(_otherLoc);
+        return otherUnitKey !== undefined && otherUnitKey !== thisUnitKey;
     });
 }
