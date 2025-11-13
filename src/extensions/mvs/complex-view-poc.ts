@@ -125,18 +125,21 @@ function makeSnapshot(pdbId: string, animationDirection: 'open' | 'close', data:
             .component({ selector: record.ligandLabelChains.map(label_asym_id => ({ label_asym_id })) })
             .representation({ type: 'surface' }) // TODO gaussian surface?
             .color({ color: ligandColor });
-        // struct.primitives({ opacity: 0.5 }).sphere({ center: { label_asym_id: record.polymerLabelChain } });
     }
-    // const prims = builder.primitives({ color: '#808080' });
-    // prims.tube({
-    //     start: { structure_ref: `struct-A:1_555`, expression_schema: 'all_atomic', expressions: [{ label_asym_id: 'A' }] },
-    //     end: { structure_ref: `struct-B:1_555`, expression_schema: 'all_atomic', expressions: [{ label_asym_id: 'B' }] },
-    //     radius: 0.5,
-    // });
-    // TODO - primitives in root should reference transformed structure coordinates
-
+    const primitives = builder.primitives({ color: '#808080' });
+    const edges = 'A-B,A-D,C-B,C-D,A-C'.split(',').map(s => s.split('-') as [string, string]);
+    for (const [a, b] of edges) {
+        primitives.tube({
+            start: { structure_ref: `struct-${a}:1_555`, expression_schema: 'all_atomic', expressions: [{ label_asym_id: a }] },
+            end: { structure_ref: `struct-${b}:1_555`, expression_schema: 'all_atomic', expressions: [{ label_asym_id: b }] },
+            radius: 0.5,
+        });
+    }
+    // TODO really implement this instead of hardcoding edges
+    // TODO connect centers of interfaces
+    // TODO adjust tube radius based on interface size/"strength"
+    
     const maxTranslation = Math.max(...Object.values(translations).map(Vec3.magnitude));
-
     const dir = Vec3.create(0, 0, -1);
     const up = Vec3.create(0, 1, 0);
     // TODO compute final camera from translated chain bounding spheres?
