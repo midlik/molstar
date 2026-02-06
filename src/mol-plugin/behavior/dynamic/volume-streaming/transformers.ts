@@ -1,37 +1,38 @@
 /**
- * Copyright (c) 2019-2022 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2019-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author David Sehnal <david.sehnal@gmail.com>
  * @author Alexander Rose <alexander.rose@weirdbyte.de>
  * @author Adam Midlik <midlik@gmail.com>
  */
 
-import { PluginStateObject as SO, PluginStateTransform } from '../../../../mol-plugin-state/objects';
-import { VolumeServerInfo, VolumeServerHeader } from './model';
-import { ParamDefinition as PD } from '../../../../mol-util/param-definition';
-import { Task } from '../../../../mol-task';
-import { PluginContext } from '../../../../mol-plugin/context';
-import { urlCombine } from '../../../../mol-util/url';
-import { Volume } from '../../../../mol-model/volume';
-import { StateAction, StateObject, StateTransformer } from '../../../../mol-state';
-import { getStreamingMethod, getIds, getContourLevel, getEmdbIds } from './util';
-import { VolumeStreaming } from './behavior';
-import { VolumeRepresentation3DHelpers } from '../../../../mol-plugin-state/transforms/representation';
-import { VolumeRepresentationRegistry } from '../../../../mol-repr/volume/registry';
-import { Theme } from '../../../../mol-theme/theme';
 import { Box3D } from '../../../../mol-math/geometry';
 import { Vec3 } from '../../../../mol-math/linear-algebra';
-import { PluginConfig } from '../../../config';
 import { Model } from '../../../../mol-model/structure';
 import { GlobalModelTransformInfo } from '../../../../mol-model/structure/model/properties/global-transform';
+import { Volume } from '../../../../mol-model/volume';
+import { PluginStateTransform, PluginStateObject as SO } from '../../../../mol-plugin-state/objects';
+import { VolumeRepresentation3DHelpers } from '../../../../mol-plugin-state/transforms/representation';
+import { PluginContext } from '../../../../mol-plugin/context';
+import { VolumeRepresentationRegistry } from '../../../../mol-repr/volume/registry';
+import { StateAction, StateObject, StateTransformer } from '../../../../mol-state';
+import { Task } from '../../../../mol-task';
+import { Theme } from '../../../../mol-theme/theme';
+import { ParamDefinition as PD } from '../../../../mol-util/param-definition';
+import { urlCombine } from '../../../../mol-util/url';
+import { PluginConfig } from '../../../config';
+import { VolumeStreaming } from './behavior';
+import { VolumeServerHeader, VolumeServerInfo } from './model';
+import { getContourLevel, getEmdbIds, getIds, getStreamingMethod } from './util';
 
-function addEntry(entries: InfoEntryProps[], method: VolumeServerInfo.Kind, dataId: string, emDefaultContourLevel: number) {
-    entries.push({
+
+function createEntry(method: VolumeServerInfo.Kind, dataId: string, emDefaultContourLevel: number): InfoEntryProps {
+    return {
+        dataId,
         source: method === 'em'
             ? { name: 'em', params: { isoValue: Volume.IsoValue.absolute(emDefaultContourLevel || 0) } }
-            : { name: 'x-ray', params: { } },
-        dataId
-    });
+            : { name: 'x-ray', params: {} },
+    };
 }
 
 export const InitVolumeStreaming = StateAction.build({
@@ -62,36 +63,29 @@ export const InitVolumeStreaming = StateAction.build({
 
     for (let i = 0, il = params.entries.length; i < il; ++i) {
         const dataId = params.entries[i].id.toLowerCase();
-        let emDefaultContourLevel: number | undefined;
 
         if (params.method === 'em') {
-            // if pdb ids are given for method 'em', get corresponding emd ids
-            // and continue the loop
-            if (!dataId.toUpperCase().startsWith('EMD')) {
+            // if pdb ids are given for method 'em', get corresponding emd ids:
+            let emdbIds: string[];
+            if (dataId.startsWith('emd')) {
+                emdbIds = [dataId];
+            } else {
                 await taskCtx.update('Getting EMDB info...');
-                const emdbIds = await getEmdbIds(plugin, taskCtx, dataId);
-                for (let j = 0, jl = emdbIds.length; j < jl; ++j) {
-                    const emdbId = emdbIds[j];
-                    let contourLevel: number | undefined;
-                    try {
-                        contourLevel = await getContourLevel(params.options.emContourProvider, plugin, taskCtx, emdbId);
-                    } catch (e) {
-                        console.info(`Could not get map info for ${emdbId}: ${e}`);
-                        continue;
-                    }
-                    addEntry(entries, params.method, emdbId, contourLevel || 0);
+                emdbIds = await getEmdbIds(plugin, taskCtx, dataId);
+            }
+            for (const emdbId of emdbIds) {
+                let contourLevel: number | undefined;
+                try {
+                    contourLevel = await getContourLevel(params.options.emContourProvider, plugin, taskCtx, emdbId);
+                } catch (e) {
+                    console.info(`Could not get map info for ${emdbId}: ${e}`);
+                    continue;
                 }
-                continue;
+                entries.push(createEntry(params.method, emdbId, contourLevel || 0));
             }
-            try {
-                emDefaultContourLevel = await getContourLevel(params.options.emContourProvider, plugin, taskCtx, dataId);
-            } catch (e) {
-                console.info(`Could not get map info for ${dataId}: ${e}`);
-                continue;
-            }
+        } else { // x-ray
+            entries.push(createEntry(params.method, dataId, 0));
         }
-
-        addEntry(entries, params.method, dataId, emDefaultContourLevel || 0);
     }
 
     const infoTree = state.build().to(ref)
@@ -160,7 +154,7 @@ const InfoEntryParams = {
         'em': PD.Group({
             isoValue: Volume.createIsoValueParam(Volume.IsoValue.relative(1))
         }),
-        'x-ray': PD.Group({ })
+        'x-ray': PD.Group({})
     })
 };
 type InfoEntryProps = PD.Values<typeof InfoEntryParams>
@@ -175,13 +169,23 @@ const CreateVolumeStreamingInfo = PluginStateTransform.BuiltIn({
     params(a) {
         return {
             serverUrl: PD.Text('https://ds.litemol.org'),
+            autoEntries: PD.Boolean(false, { description: 'Create "entries" list automatically based on input structure' }),
             entries: PD.ObjectList<InfoEntryProps>(InfoEntryParams, ({ dataId }) => dataId, {
-                defaultValue: [{ dataId: '', source: { name: 'x-ray', params: {} } }]
+                defaultValue: [{ dataId: '', source: { name: 'x-ray', params: {} } }],
+                hideIf: p => p.autoEntries,
             }),
         };
     }
 })({
     apply: ({ a, params }, plugin: PluginContext) => Task.create('', async taskCtx => {
+        // if (params.autoEntries) {
+        //     await taskCtx.update('Creating entry list...');
+        //     const autoEnties: typeof params.entries = [];
+        //     const method = getStreamingMethod(a && a.data);
+        //     const ids = getIds(method, a && a.data);
+        //     // TODO: implement autoEntries
+        //     console.log('autoEntries:', method, ids, autoEnties);
+        // }
         const entries: VolumeServerInfo.EntryData[] = [];
         for (let i = 0, il = params.entries.length; i < il; ++i) {
             const e = params.entries[i];
@@ -202,7 +206,7 @@ const CreateVolumeStreamingInfo = PluginStateTransform.BuiltIn({
             entries,
             structure: a.data
         };
-        return new VolumeServerInfo(data, { label: 'Volume Server', description: `${entries.map(e => e.dataId). join(', ')}` });
+        return new VolumeServerInfo(data, { label: 'Volume Server', description: `${entries.map(e => e.dataId).join(', ')}` });
     })
 });
 
