@@ -16,7 +16,7 @@ import { VolumeRepresentation3DHelpers } from '../../../../mol-plugin-state/tran
 import { PluginContext } from '../../../../mol-plugin/context';
 import { VolumeRepresentationRegistry } from '../../../../mol-repr/volume/registry';
 import { StateAction, StateObject, StateTransformer } from '../../../../mol-state';
-import { Task } from '../../../../mol-task';
+import { RuntimeContext, Task } from '../../../../mol-task';
 import { Theme } from '../../../../mol-theme/theme';
 import { ParamDefinition as PD } from '../../../../mol-util/param-definition';
 import { urlCombine } from '../../../../mol-util/url';
@@ -33,6 +33,38 @@ function createEntry(method: VolumeServerInfo.Kind, dataId: string, emDefaultCon
             ? { name: 'em', params: { isoValue: Volume.IsoValue.absolute(emDefaultContourLevel || 0) } }
             : { name: 'x-ray', params: {} },
     };
+}
+
+async function createEntries(emdbOrPdbIds: string[], method: 'em' | 'x-ray', emContourProvider: 'emdb' | 'pdbe', plugin: PluginContext, taskCtx: RuntimeContext): Promise<InfoEntryProps[]> {
+    const out: InfoEntryProps[] = [];
+
+    for (const id of emdbOrPdbIds) {
+        const dataId = id.toLowerCase();
+
+        if (method === 'em') {
+            // if pdb ids are given for method 'em', get corresponding emd ids:
+            let emdbIds: string[];
+            if (dataId.startsWith('emd')) {
+                emdbIds = [dataId];
+            } else {
+                await taskCtx.update('Getting EMDB info...');
+                emdbIds = await getEmdbIds(plugin, taskCtx, dataId);
+            }
+            for (const emdbId of emdbIds) {
+                let contourLevel: number | undefined;
+                try {
+                    contourLevel = await getContourLevel(emContourProvider, plugin, taskCtx, emdbId);
+                } catch (e) {
+                    console.info(`Could not get map info for ${emdbId}: ${e}`);
+                    continue;
+                }
+                out.push(createEntry(method, emdbId, contourLevel || 0));
+            }
+        } else { // x-ray
+            out.push(createEntry(method, dataId, 0));
+        }
+    }
+    return out;
 }
 
 export const InitVolumeStreaming = StateAction.build({
@@ -59,34 +91,7 @@ export const InitVolumeStreaming = StateAction.build({
         return a.data.models.length === 1 && Model.probablyHasDensityMap(a.data.models[0]);
     }
 })(({ ref, state, params }, plugin: PluginContext) => Task.create('Volume Streaming', async taskCtx => {
-    const entries: InfoEntryProps[] = [];
-
-    for (let i = 0, il = params.entries.length; i < il; ++i) {
-        const dataId = params.entries[i].id.toLowerCase();
-
-        if (params.method === 'em') {
-            // if pdb ids are given for method 'em', get corresponding emd ids:
-            let emdbIds: string[];
-            if (dataId.startsWith('emd')) {
-                emdbIds = [dataId];
-            } else {
-                await taskCtx.update('Getting EMDB info...');
-                emdbIds = await getEmdbIds(plugin, taskCtx, dataId);
-            }
-            for (const emdbId of emdbIds) {
-                let contourLevel: number | undefined;
-                try {
-                    contourLevel = await getContourLevel(params.options.emContourProvider, plugin, taskCtx, emdbId);
-                } catch (e) {
-                    console.info(`Could not get map info for ${emdbId}: ${e}`);
-                    continue;
-                }
-                entries.push(createEntry(params.method, emdbId, contourLevel || 0));
-            }
-        } else { // x-ray
-            entries.push(createEntry(params.method, dataId, 0));
-        }
-    }
+    const entries: InfoEntryProps[] = await createEntries(params.entries.map(e => e.id), params.method, params.options.emContourProvider, plugin, taskCtx);
 
     const infoTree = state.build().to(ref)
         .applyOrUpdateTagged(VolumeStreaming.RootTag, CreateVolumeStreamingInfo, {
