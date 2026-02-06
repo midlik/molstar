@@ -171,10 +171,10 @@ const CreateVolumeStreamingInfo = PluginStateTransform.BuiltIn({
     display: { name: 'Volume Streaming Info' },
     from: SO.Molecule.Structure,
     to: VolumeServerInfo,
-    params(a) {
+    params(a, plugin: PluginContext) {
         return {
-            serverUrl: PD.Text('https://ds.litemol.org'),
-            autoEntries: PD.Boolean(false, { description: 'Create "entries" list automatically based on input structure' }),
+            serverUrl: PD.Text(plugin.config.get(PluginConfig.VolumeStreaming.DefaultServer) || 'https://ds.litemol.org'),
+            autoEntries: PD.Boolean(false, { description: 'Create "entries" list automatically based on the input structure' }),
             entries: PD.ObjectList<InfoEntryProps>(InfoEntryParams, ({ dataId }) => dataId, {
                 defaultValue: [{ dataId: '', source: { name: 'x-ray', params: {} } }],
                 hideIf: p => p.autoEntries,
@@ -183,17 +183,17 @@ const CreateVolumeStreamingInfo = PluginStateTransform.BuiltIn({
     }
 })({
     apply: ({ a, params }, plugin: PluginContext) => Task.create('', async taskCtx => {
-        // if (params.autoEntries) {
-        //     await taskCtx.update('Creating entry list...');
-        //     const autoEnties: typeof params.entries = [];
-        //     const method = getStreamingMethod(a && a.data);
-        //     const ids = getIds(method, a && a.data);
-        //     // TODO: implement autoEntries
-        //     console.log('autoEntries:', method, ids, autoEnties);
-        // }
+        let inputEntries: InfoEntryProps[];
+        if (params.autoEntries) {
+            await taskCtx.update('Creating entry list...');
+            const method = getStreamingMethod(a?.data);
+            const ids = getIds(method, a?.data);
+            inputEntries = await createEntries(ids, method, 'emdb', plugin, taskCtx);
+        } else {
+            inputEntries = params.entries;
+        }
         const entries: VolumeServerInfo.EntryData[] = [];
-        for (let i = 0, il = params.entries.length; i < il; ++i) {
-            const e = params.entries[i];
+        for (const e of inputEntries) {
             const dataId = e.dataId;
             const emDefaultContourLevel = e.source.name === 'em' ? e.source.params.isoValue : Volume.IsoValue.relative(1);
             await taskCtx.update('Getting server header...');
