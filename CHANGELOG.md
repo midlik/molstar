@@ -9,6 +9,7 @@ Note that since we don't clearly distinguish between a public and private interf
 - Fix detecting sidechain-only structures as coarse-grained (#1420)
 - Fix clip-object transform due to missing axis normalization
 - Sequence alignment: Fix return type & improve scoring for unknown residues
+- Use PDB SEQRES block to show unresolved residues in Sequence toolbar
 
 ## [v5.7.0] - 2026-02-28
 - Text label improvements
