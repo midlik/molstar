@@ -179,6 +179,8 @@ const CreateVolumeStreamingInfo = PluginStateTransform.BuiltIn({
                 defaultValue: [{ dataId: '', source: { name: 'x-ray', params: {} } }],
                 hideIf: p => p.autoEntries,
             }),
+            defaultView: PD.Select<VolumeStreaming.ViewTypes>(getStreamingMethod(a?.data) === 'em' ? 'auto' : 'selection-box', VolumeStreaming.ViewTypeOptions as any, { isHidden: true }),
+            defaultChannelParams: PD.Value<VolumeStreaming.DefaultChannelParams>({}, { isHidden: true }),
         };
     }
 })({
@@ -209,7 +211,9 @@ const CreateVolumeStreamingInfo = PluginStateTransform.BuiltIn({
         const data: VolumeServerInfo.Data = {
             serverUrl: params.serverUrl,
             entries,
-            structure: a.data
+            structure: a.data,
+            defaultView: params.defaultView,
+            defaultChannelParams: params.defaultChannelParams,
         };
         return new VolumeServerInfo(data, { label: 'Volume Server', description: `${entries.map(e => e.dataId).join(', ')}` });
     })
@@ -223,7 +227,7 @@ const CreateVolumeStreamingBehavior = PluginStateTransform.BuiltIn({
     from: VolumeServerInfo,
     to: VolumeStreaming,
     params(a) {
-        return VolumeStreaming.createParams({ data: a && a.data });
+        return VolumeStreaming.createParams({ data: a?.data, defaultView: a?.data.defaultView, channelParams: a?.data.defaultChannelParams });
     }
 })({
     canAutoUpdate: ({ oldParams, newParams }) => {
