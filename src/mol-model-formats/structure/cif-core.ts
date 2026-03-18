@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2020 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2020-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Alexander Rose <alexander.rose@weirdbyte.de>
  */
@@ -26,9 +26,10 @@ import { cantorPairing } from '../../mol-data/util';
 
 function getSpacegroupNameOrNumber(space_group: CifCore_Database['space_group']) {
     const groupNumber = space_group.it_number.value(0);
-    const groupName = space_group['name_h-m_full'].value(0).replace('-', ' ');
+    const space_group_name = space_group['name_h-m_full'].isDefined ? space_group['name_h-m_full'] : space_group['name_h-m_alt'];
+    const groupName = space_group_name.value(0).replace('_', ' ');
     if (!space_group.it_number.isDefined) return groupName;
-    if (!space_group['name_h-m_full'].isDefined) return groupNumber;
+    if (!space_group_name.isDefined) return groupNumber;
     return groupNumber;
 }
 
@@ -78,17 +79,29 @@ async function getModels(db: CifCore_Database, format: CifCoreFormat, ctx: Runti
             const ts = type_symbol.value(i);
             const n = ts.length;
             if (ts[n - 1] === '+') {
+                const c = ts.charCodeAt(n - 2);
+                if (n >= 2 && c >= 49 && c <= 57) {
+                    element_symbol[i] = ts.substring(0, n - 2);
+                    formal_charge[i] = c - 48;
+                } else {
+                    element_symbol[i] = ts.substring(0, n - 1);
+                    formal_charge[i] = 1;
+                }
+            } else if (n >= 2 && ts[n - 2] === '+') {
                 element_symbol[i] = ts.substring(0, n - 2);
-                formal_charge[i] = parseInt(ts[n - 2]);
-            } else if (ts[n - 2] === '+') {
-                element_symbol[i] = ts.substring(0, n - 2);
-                formal_charge[i] = parseInt(ts[n - 1]);
+                formal_charge[i] = ts.charCodeAt(n - 1) - 48;
             } else if (ts[n - 1] === '-') {
+                const c = ts.charCodeAt(n - 2);
+                if (n >= 2 && c >= 48 && c <= 57) {
+                    element_symbol[i] = ts.substring(0, n - 2);
+                    formal_charge[i] = -(c - 48);
+                } else {
+                    element_symbol[i] = ts.substring(0, n - 1);
+                    formal_charge[i] = -1;
+                }
+            } else if (n >= 2 && ts[n - 2] === '-') {
                 element_symbol[i] = ts.substring(0, n - 2);
-                formal_charge[i] = -parseInt(ts[n - 2]);
-            } else if (ts[n - 2] === '-') {
-                element_symbol[i] = ts.substring(0, n - 2);
-                formal_charge[i] = -parseInt(ts[n - 1]);
+                formal_charge[i] = -(ts.charCodeAt(n - 1) - 48);
             } else {
                 element_symbol[i] = ts;
                 formal_charge[i] = 0;

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2021-2023 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2021-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Sukolsak Sakshuwong <sukolsak@stanford.edu>
  * @author Alexander Rose <alexander.rose@weirdbyte.de>
@@ -30,6 +30,10 @@ import { RenderObjectExporter, RenderObjectExportData } from './render-object-ex
 import { readAlphaTexture, readTexture } from '../../mol-gl/compute/util';
 import { assertUnreachable } from '../../mol-util/type-helpers';
 import { ValueCell } from '../../mol-util/value-cell';
+import { ColorTheme } from '../../mol-theme/color';
+import { computeFrenetFrames } from '../../mol-math/linear-algebra/3d/frenet-frames';
+import { addTube } from '../../mol-geo/geometry/mesh/builder/tube';
+import { arrayCopyOffset } from '../../mol-util/array';
 
 const GeoExportName = 'geo-export';
 
@@ -49,22 +53,32 @@ export interface AddMeshInput {
         groups: Float32Array | Uint8Array
         vertexCount: number
         drawCount: number
+        vertexMapping?: number[]
     } | undefined
     meshes: Mesh[] | undefined
-    values: BaseValues & { readonly uDoubleSided?: ValueCell<any> }
+    values: BaseValues & {
+        readonly uDoubleSided?: ValueCell<boolean>
+        readonly aGroup?: ValueCell<Float32Array>
+        readonly tPositionGroup?: ValueCell<TextureImage<Float32Array>>
+    }
     isGeoTexture: boolean
     mode: MeshMode
     webgl: WebGLContext | undefined
     ctx: RuntimeContext
+    vertexMapping?: number[]
 }
 
 export type MeshGeoData = {
-    values: BaseValues,
-    groups: Float32Array | Uint8Array,
-    vertexCount: number,
-    instanceIndex: number,
-    isGeoTexture: boolean,
+    values: BaseValues & {
+        readonly aGroup?: ValueCell<Float32Array>
+        readonly tPositionGroup?: ValueCell<TextureImage<Float32Array>>
+    }
+    groups?: Float32Array | Uint8Array,
+    vertexCount: number
+    instanceIndex: number
+    isGeoTexture: boolean
     mode: MeshMode
+    vertexMapping?: number[]
 }
 
 export abstract class MeshExporter<D extends RenderObjectExportData> implements RenderObjectExporter<D> {
@@ -77,7 +91,7 @@ export abstract class MeshExporter<D extends RenderObjectExportData> implements 
         return unpackRGBToInt(r, g, b) / sizeDataFactor;
     }
 
-    private static getSize(values: BaseValues & SizeValues, instanceIndex: number, group: number): number {
+    private static getSize(values: BaseValues & SizeValues, instanceIndex: number, group: number, vertexIndex: number): number {
         const tSize = values.tSize.ref.value;
         let size = 0;
         switch (values.dSizeType.ref.value) {
@@ -93,6 +107,13 @@ export abstract class MeshExporter<D extends RenderObjectExportData> implements 
             case 'groupInstance':
                 const groupCount = values.uGroupCount.ref.value;
                 size = MeshExporter.getSizeFromTexture(tSize, instanceIndex * groupCount + group);
+                break;
+            case 'vertex':
+                size = MeshExporter.getSizeFromTexture(tSize, vertexIndex);
+                break;
+            case 'vertexInstance':
+                const vertexCount = values.uVertexCount.ref.value;
+                size = MeshExporter.getSizeFromTexture(tSize, instanceIndex * vertexCount + vertexIndex);
                 break;
         }
         return size * values.uSizeFactor.ref.value;
@@ -225,13 +246,14 @@ export abstract class MeshExporter<D extends RenderObjectExportData> implements 
                 indices: mesh.indexBuffer.ref.value,
                 groups: mesh.groupBuffer.ref.value,
                 vertexCount: mesh.vertexCount,
-                drawCount: mesh.triangleCount * 3
+                drawCount: mesh.triangleCount * 3,
+                vertexMapping: input.vertexMapping,
             };
         }
     }
 
     protected static getColor(vertexIndex: number, geoData: MeshGeoData, interpolatedColors?: Uint8Array, interpolatedOverpaint?: Uint8Array): Color {
-        const { values, instanceIndex, isGeoTexture, mode, groups } = geoData;
+        const { values, groups, instanceIndex, isGeoTexture, mode } = geoData;
         const groupCount = values.uGroupCount.ref.value;
         const colorType = values.dColorType.ref.value;
         const uColor = values.uColor.ref.value;
@@ -239,12 +261,22 @@ export abstract class MeshExporter<D extends RenderObjectExportData> implements 
         const overpaintType = values.dOverpaintType.ref.value;
         const dOverpaint = values.dOverpaint.ref.value;
         const tOverpaint = values.tOverpaint.ref.value.array;
+        const usePalette = values.dUsePalette.ref.value;
 
         let vertexCount = geoData.vertexCount;
-        if (mode === 'lines') {
+        if (geoData.vertexMapping) {
+            vertexIndex = geoData.vertexMapping[vertexIndex];
+            vertexCount = values.uVertexCount.ref.value;
+        } else if (mode === 'lines') {
             vertexIndex *= 2;
             vertexCount *= 2;
         }
+
+        const group = isGeoTexture
+            ? MeshExporter.getGroup(groups!, vertexIndex)
+            : values.dGeometryType.ref.value === 'spheres'
+                ? values.tPositionGroup!.ref.value.array[vertexIndex * 4 + 3]
+                : values.aGroup!.ref.value[vertexIndex];
 
         let color: Color;
         switch (colorType) {
@@ -255,12 +287,10 @@ export abstract class MeshExporter<D extends RenderObjectExportData> implements 
                 color = Color.fromArray(tColor, instanceIndex * 3);
                 break;
             case 'group': {
-                const group = isGeoTexture ? MeshExporter.getGroup(groups, vertexIndex) : groups[vertexIndex];
                 color = Color.fromArray(tColor, group * 3);
                 break;
             }
             case 'groupInstance': {
-                const group = isGeoTexture ? MeshExporter.getGroup(groups, vertexIndex) : groups[vertexIndex];
                 color = Color.fromArray(tColor, (instanceIndex * groupCount + group) * 3);
                 break;
             }
@@ -279,12 +309,31 @@ export abstract class MeshExporter<D extends RenderObjectExportData> implements 
             default: throw new Error('Unsupported color type.');
         }
 
+        if (usePalette) {
+            const palette = values.tPalette.ref.value;
+            const paletteArray = palette.array;
+            const paletteLength = paletteArray.length / 3;
+            const [r, g, b] = Color.toRgb(color);
+            const paletteValue = ((r * 256 * 256 + g * 256 + b) - 1) / ColorTheme.PaletteScale;
+            const fIndex = paletteValue * (paletteLength - 1);
+            if (palette.filter === 'nearest') {
+                const index = Math.round(fIndex);
+                color = Color.fromArray(paletteArray, index * 3);
+            } else { // linear
+                const index0 = Math.floor(fIndex);
+                const index1 = index0 + 1;
+                const t = fIndex - index0;
+                const color0 = Color.fromArray(paletteArray, index0 * 3);
+                const color1 = Color.fromArray(paletteArray, index1 * 3);
+                color = Color.interpolate(color0, color1, t);
+            }
+        }
+
         if (dOverpaint) {
             let overpaintColor: Color;
             let overpaintAlpha: number;
             switch (overpaintType) {
                 case 'groupInstance': {
-                    const group = isGeoTexture ? MeshExporter.getGroup(groups, vertexIndex) : groups[vertexIndex];
                     const idx = (instanceIndex * groupCount + group) * 4;
                     overpaintColor = Color.fromArray(tOverpaint, idx);
                     overpaintAlpha = tOverpaint[idx + 3] / 255;
@@ -320,16 +369,24 @@ export abstract class MeshExporter<D extends RenderObjectExportData> implements 
         const transparencyType = values.dTransparencyType.ref.value;
 
         let vertexCount = geoData.vertexCount;
-        if (mode === 'lines') {
+        if (geoData.vertexMapping) {
+            vertexIndex = geoData.vertexMapping[vertexIndex];
+            vertexCount = values.uVertexCount.ref.value;
+        } else if (mode === 'lines') {
             vertexIndex *= 2;
             vertexCount *= 2;
         }
+
+        const group = isGeoTexture
+            ? MeshExporter.getGroup(groups!, vertexIndex)
+            : values.dGeometryType.ref.value === 'spheres'
+                ? values.tPositionGroup!.ref.value.array[vertexIndex * 4 + 3]
+                : values.aGroup!.ref.value[vertexIndex];
 
         let transparency: number = 0;
         if (dTransparency) {
             switch (transparencyType) {
                 case 'groupInstance': {
-                    const group = isGeoTexture ? MeshExporter.getGroup(groups, vertexIndex) : groups[vertexIndex];
                     const idx = (instanceIndex * groupCount + group);
                     transparency = tTransparency[idx] / 255;
                     break;
@@ -373,10 +430,133 @@ export abstract class MeshExporter<D extends RenderObjectExportData> implements 
         await this.addMeshWithColors({ mesh: { vertices: aPosition, normals: aNormal, indices, groups: aGroup, vertexCount, drawCount }, meshes: undefined, values, isGeoTexture: false, mode: 'triangles', webgl, ctx });
     }
 
-    private async addLines(values: LinesValues, webgl: WebGLContext, ctx: RuntimeContext) {
+    private async addLineStrips(values: LinesValues, webgl: WebGLContext, ctx: RuntimeContext) {
         const aStart = values.aStart.ref.value;
         const aEnd = values.aEnd.ref.value;
         const aGroup = values.aGroup.ref.value;
+        const stripCount = values.stripCount.ref.value;
+
+        const stripOffsets = values.stripOffsets.ref.value;
+        const aMapping = values.aMapping.ref.value;
+
+        if (this.options.linesAsTriangles) {
+            const instanceCount = values.instanceCount.ref.value;
+            const meshes: Mesh[] = [];
+            const radialSegments = 6;
+            const vertexMapping: number[] = [];
+
+            for (let instanceIndex = 0; instanceIndex < instanceCount; ++instanceIndex) {
+                const state = MeshBuilder.createState(512, 256);
+
+                for (let s = 0; s < stripCount; ++s) {
+                    const stripStart = stripOffsets[s];
+                    const stripEnd = stripOffsets[s + 1];
+
+                    // Collect segments for this strip (only end-side vertices)
+                    const segmentIndices: number[] = [];
+                    for (let v = stripStart; v < stripEnd; v += 2) {
+                        const mappingY = aMapping[v * 2 + 1];
+                        if (mappingY < 0) continue;
+                        segmentIndices.push(v);
+                    }
+                    if (segmentIndices.length === 0) continue;
+
+                    const nPoints = segmentIndices.length + 1;
+                    const linearSegments = nPoints - 1;
+                    const curvePoints = new Float32Array(nPoints * 3);
+                    const curveOrigIndices: number[] = [];
+                    const widthValues = new Float32Array(nPoints);
+                    const heightValues = new Float32Array(nPoints);
+
+                    // First point: start of first segment
+                    const v0 = segmentIndices[0];
+                    arrayCopyOffset(curvePoints, aStart, 0, v0 * 3, 3);
+                    curveOrigIndices.push(v0);
+                    const radius0 = MeshExporter.getSize(values, instanceIndex, aGroup[v0], v0) * 0.03;
+                    widthValues[0] = radius0;
+                    heightValues[0] = radius0;
+
+                    // Subsequent points: end of each segment
+                    for (let j = 0; j < segmentIndices.length; ++j) {
+                        const v = segmentIndices[j];
+                        arrayCopyOffset(curvePoints, aEnd, (j + 1) * 3, v * 3, 3);
+                        curveOrigIndices.push(v);
+                        const radius = MeshExporter.getSize(values, instanceIndex, aGroup[v], v) * 0.03;
+                        widthValues[j + 1] = radius;
+                        heightValues[j + 1] = radius;
+                    }
+
+                    const normalVectors = new Float32Array(nPoints * 3);
+                    const binormalVectors = new Float32Array(nPoints * 3);
+                    computeFrenetFrames(curvePoints, normalVectors, binormalVectors, nPoints);
+
+                    addTube(state, curvePoints, normalVectors, binormalVectors, linearSegments, radialSegments, widthValues, heightValues, true, true, 'elliptical');
+
+                    // Build vertex mapping
+                    if (instanceIndex === 0) {
+                        for (let i = 0; i <= linearSegments; ++i) {
+                            for (let j = 0; j < radialSegments; ++j) {
+                                vertexMapping.push(curveOrigIndices[i]);
+                            }
+                        }
+                        for (let j = 0; j <= radialSegments; ++j) {
+                            vertexMapping.push(curveOrigIndices[0]);
+                        }
+                        for (let j = 0; j <= radialSegments; ++j) {
+                            vertexMapping.push(curveOrigIndices[linearSegments]);
+                        }
+                    }
+                }
+
+                meshes.push(MeshBuilder.getMesh(state));
+            }
+
+            await this.addMeshWithColors({ mesh: undefined, meshes, values, isGeoTexture: false, mode: 'triangles', webgl, ctx, vertexMapping });
+        } else {
+            // Decompose strips into individual line segments
+            let nLineSegments = 0;
+            for (let s = 0; s < stripCount; ++s) {
+                const stripStart = stripOffsets[s];
+                const stripEnd = stripOffsets[s + 1];
+                for (let v = stripStart; v < stripEnd; v += 2) {
+                    const mappingY = aMapping[v * 2 + 1];
+                    if (mappingY < 0) continue;
+                    nLineSegments++;
+                }
+            }
+
+            const vertexCount = nLineSegments * 2;
+            const drawCount = nLineSegments;
+            const vertices = new Float32Array(vertexCount * 3);
+            const vertexMapping: number[] = [];
+
+            let vertexIndex = 0;
+            for (let s = 0; s < stripCount; ++s) {
+                const stripStart = stripOffsets[s];
+                const stripEnd = stripOffsets[s + 1];
+                for (let v = stripStart; v < stripEnd; v += 2) {
+                    const mappingY = aMapping[v * 2 + 1];
+                    if (mappingY < 0) continue;
+
+                    arrayCopyOffset(vertices, aStart, vertexIndex * 3, v * 3, 3);
+                    vertexMapping[vertexIndex] = v;
+                    vertexIndex++;
+
+                    arrayCopyOffset(vertices, aEnd, vertexIndex * 3, v * 3, 3);
+                    vertexMapping[vertexIndex] = v;
+                    vertexIndex++;
+                }
+            }
+
+            await this.addMeshWithColors({ mesh: { vertices, normals: undefined, indices: undefined, groups: aGroup, vertexCount, drawCount, vertexMapping }, meshes: undefined, values, isGeoTexture: false, mode: 'lines', webgl, ctx });
+        }
+    }
+
+    private async addLineSegments(values: LinesValues, webgl: WebGLContext, ctx: RuntimeContext) {
+        const aStart = values.aStart.ref.value;
+        const aEnd = values.aEnd.ref.value;
+        const aGroup = values.aGroup.ref.value;
+
         const vertexCount = (values.uVertexCount.ref.value / 4) * 2;
         const drawCount = values.drawCount.ref.value / (2 * 3);
 
@@ -391,6 +571,8 @@ export abstract class MeshExporter<D extends RenderObjectExportData> implements 
             const topCap = true;
             const bottomCap = true;
 
+            const vertexMapping: number[] = [];
+
             for (let instanceIndex = 0; instanceIndex < instanceCount; ++instanceIndex) {
                 const state = MeshBuilder.createState(512, 256);
 
@@ -398,32 +580,41 @@ export abstract class MeshExporter<D extends RenderObjectExportData> implements 
                     v3fromArray(start, aStart, i * 3);
                     v3fromArray(end, aEnd, i * 3);
 
-                    const group = aGroup[i];
-                    const radius = MeshExporter.getSize(values, instanceIndex, group) * 0.03;
+                    const group = aGroup[i / 4];
+                    const radius = MeshExporter.getSize(values, instanceIndex, group, i / 4) * 0.03;
 
                     const cylinderProps = { radiusTop: radius, radiusBottom: radius, topCap, bottomCap, radialSegments };
-                    state.currentGroup = aGroup[i];
+                    const vertexOffset = state.vertices.elementCount;
                     addCylinder(state, start, end, 1, cylinderProps);
+
+                    if (instanceIndex === 0) {
+                        for (let vi = vertexOffset; vi < state.vertices.elementCount; ++vi) {
+                            vertexMapping.push(i);
+                        }
+                    }
                 }
 
                 meshes.push(MeshBuilder.getMesh(state));
             }
 
-            await this.addMeshWithColors({ mesh: undefined, meshes, values, isGeoTexture: false, mode: 'triangles', webgl, ctx });
+            await this.addMeshWithColors({ mesh: undefined, meshes, values, isGeoTexture: false, mode: 'triangles', webgl, ctx, vertexMapping });
         } else {
             const n = vertexCount / 2;
             const vertices = new Float32Array(n * 2 * 3);
             for (let i = 0; i < n; ++i) {
-                vertices[i * 6] = aStart[i * 4 * 3];
-                vertices[i * 6 + 1] = aStart[i * 4 * 3 + 1];
-                vertices[i * 6 + 2] = aStart[i * 4 * 3 + 2];
-
-                vertices[i * 6 + 3] = aEnd[i * 4 * 3];
-                vertices[i * 6 + 4] = aEnd[i * 4 * 3 + 1];
-                vertices[i * 6 + 5] = aEnd[i * 4 * 3 + 2];
+                arrayCopyOffset(vertices, aStart, i * 6, i * 4 * 3, 3);
+                arrayCopyOffset(vertices, aEnd, i * 6 + 3, i * 4 * 3, 3);
             }
 
             await this.addMeshWithColors({ mesh: { vertices, normals: undefined, indices: undefined, groups: aGroup, vertexCount, drawCount }, meshes: undefined, values, isGeoTexture: false, mode: 'lines', webgl, ctx });
+        }
+    }
+
+    private async addLines(values: LinesValues, webgl: WebGLContext, ctx: RuntimeContext) {
+        if (values.stripCount.ref.value !== 0) {
+            await this.addLineStrips(values, webgl, ctx);
+        } else {
+            await this.addLineSegments(values, webgl, ctx);
         }
     }
 
@@ -440,6 +631,7 @@ export abstract class MeshExporter<D extends RenderObjectExportData> implements 
             const meshes: Mesh[] = [];
 
             const detail = 0;
+            const vertexMapping: number[] = [];
 
             for (let instanceIndex = 0; instanceIndex < instanceCount; ++instanceIndex) {
                 const state = MeshBuilder.createState(512, 256);
@@ -448,15 +640,21 @@ export abstract class MeshExporter<D extends RenderObjectExportData> implements 
                     v3fromArray(center, aPosition, i * 3);
 
                     const group = aGroup[i];
-                    const radius = MeshExporter.getSize(values, instanceIndex, group) * 0.03;
-                    state.currentGroup = group;
+                    const radius = MeshExporter.getSize(values, instanceIndex, group, i) * 0.03;
+                    const vertexOffset = state.vertices.elementCount;
                     addSphere(state, center, radius, detail);
+
+                    if (instanceIndex === 0) {
+                        for (let vi = vertexOffset; vi < state.vertices.elementCount; ++vi) {
+                            vertexMapping.push(i);
+                        }
+                    }
                 }
 
                 meshes.push(MeshBuilder.getMesh(state));
             }
 
-            await this.addMeshWithColors({ mesh: undefined, meshes, values, isGeoTexture: false, mode: 'triangles', webgl, ctx });
+            await this.addMeshWithColors({ mesh: undefined, meshes, values, isGeoTexture: false, mode: 'triangles', webgl, ctx, vertexMapping });
         } else {
             await this.addMeshWithColors({ mesh: { vertices: aPosition, normals: undefined, indices: undefined, groups: aGroup, vertexCount, drawCount }, meshes: undefined, values, isGeoTexture: false, mode: 'points', webgl, ctx });
         }
@@ -471,7 +669,7 @@ export abstract class MeshExporter<D extends RenderObjectExportData> implements 
         const vertexCount = values.uVertexCount.ref.value;
         const meshes: Mesh[] = [];
 
-        const sphereCount = vertexCount / 6 * instanceCount;
+        const sphereCount = (vertexCount / 6) * instanceCount;
         let detail: number;
         switch (this.options.primitivesQuality) {
             case 'auto':
@@ -492,6 +690,8 @@ export abstract class MeshExporter<D extends RenderObjectExportData> implements 
                 assertUnreachable(this.options.primitivesQuality);
         }
 
+        const vertexMapping: number[] = [];
+
         for (let instanceIndex = 0; instanceIndex < instanceCount; ++instanceIndex) {
             const state = MeshBuilder.createState(512, 256);
 
@@ -499,15 +699,21 @@ export abstract class MeshExporter<D extends RenderObjectExportData> implements 
                 v3fromArray(center, aPosition, i * 3);
 
                 const group = aGroup[i];
-                const radius = MeshExporter.getSize(values, instanceIndex, group);
-                state.currentGroup = group;
+                const radius = MeshExporter.getSize(values, instanceIndex, group, i);
+                const vertexOffset = state.vertices.elementCount;
                 addSphere(state, center, radius, detail);
+
+                if (instanceIndex === 0) {
+                    for (let vi = vertexOffset; vi < state.vertices.elementCount; ++vi) {
+                        vertexMapping.push(i);
+                    }
+                }
             }
 
             meshes.push(MeshBuilder.getMesh(state));
         }
 
-        await this.addMeshWithColors({ mesh: undefined, meshes, values, isGeoTexture: false, mode: 'triangles', webgl, ctx });
+        await this.addMeshWithColors({ mesh: undefined, meshes, values, isGeoTexture: false, mode: 'triangles', webgl, ctx, vertexMapping });
     }
 
     private async addCylinders(values: CylindersValues, webgl: WebGLContext, ctx: RuntimeContext) {
@@ -545,6 +751,8 @@ export abstract class MeshExporter<D extends RenderObjectExportData> implements 
                 assertUnreachable(this.options.primitivesQuality);
         }
 
+        const vertexMapping: number[] = [];
+
         for (let instanceIndex = 0; instanceIndex < instanceCount; ++instanceIndex) {
             const state = MeshBuilder.createState(512, 256);
 
@@ -554,7 +762,7 @@ export abstract class MeshExporter<D extends RenderObjectExportData> implements 
                 v3sub(dir, end, start);
 
                 const group = aGroup[i];
-                const radius = MeshExporter.getSize(values, instanceIndex, group) * aScale[i];
+                const radius = MeshExporter.getSize(values, instanceIndex, group, i) * aScale[i];
                 const cap = aCap[i];
                 let topCap = cap === 1 || cap === 3;
                 let bottomCap = cap >= 2;
@@ -562,14 +770,20 @@ export abstract class MeshExporter<D extends RenderObjectExportData> implements 
                     [bottomCap, topCap] = [topCap, bottomCap];
                 }
                 const cylinderProps = { radiusTop: radius, radiusBottom: radius, topCap, bottomCap, radialSegments };
-                state.currentGroup = aGroup[i];
+                const vertexOffset = state.vertices.elementCount;
                 addCylinder(state, start, end, 1, cylinderProps);
+
+                if (instanceIndex === 0) {
+                    for (let vi = vertexOffset; vi < state.vertices.elementCount; ++vi) {
+                        vertexMapping.push(i);
+                    }
+                }
             }
 
             meshes.push(MeshBuilder.getMesh(state));
         }
 
-        await this.addMeshWithColors({ mesh: undefined, meshes, values, isGeoTexture: false, mode: 'triangles', webgl, ctx });
+        await this.addMeshWithColors({ mesh: undefined, meshes, values, isGeoTexture: false, mode: 'triangles', webgl, ctx, vertexMapping });
     }
 
     private async addTextureMesh(values: TextureMeshValues, webgl: WebGLContext, ctx: RuntimeContext) {

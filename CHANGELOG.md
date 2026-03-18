@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file, following t
 Note that since we don't clearly distinguish between a public and private interfaces there will be changes in non-major versions that are potentially breaking. If we make breaking changes to less used interfaces we will highlight it in here.
 
 ## [Unreleased]
+- Fix circular dependency which causes crash in bundlers (#1791)
+- Add `putty` as a mol-view-spec representation.
+- Fix detecting sidechain-only structures as coarse-grained (#1420)
+- Fix clip-object transform due to missing axis normalization
+
+## [v5.7.0] - 2026-02-28
+- Text label improvements
+    - Improve label background vertical centering
+    - Handle label depth variant for correct transparent background
+    - Draw border under text using fragment depth to prevent overlap on adjacent characters
+    - Clamp border width to avoid exceeding SDF range
+    - Increase font atlas quality (2x font size multiplier)
+- TM-align performance improvements (#1745)
 - Disable transparent outline close to opaque elements
 - Add axis param to trackball spin & rock animation
 - Color smoothing fixes (#1747)
@@ -12,6 +25,34 @@ Note that since we don't clearly distinguish between a public and private interf
     - Add extra radius to gaussian surface boundingsphere
 - MolViewSpec
   - Add `MVSData.toMVSX` function and `mvs-mvsj-to-mvsx.js` CLI utility
+- [Breaking] Add PQR file format support (#157)
+    - Replace `isPdbqt` with `variant` param in `TrajectoryFromPDB`
+- Add `CustomVolumeProperty` (like for models and structures)
+- Geometry export
+    - Fix missing `usePalette` support
+    - Fix vertex-based coloring for non-mesh geometries
+    - Support line-strips
+    - Support vertex-based sizing
+- Support memory efficient line-strips in Lines geometry,
+    - Add `StripLinesBuilder`
+- Add `computeFrenetFrames` helper
+- Streamlines support
+    - Add basic calculation method
+    - Add custom-volume-property
+    - Add representation with lines and tube-mesh visuals
+- Fix `TextCtrl` always moving cursor to end position
+- Add `vertex` and `vertexInstance` granularity support for size themes
+- Add `transform` and `domain` parameters to volume-value size theme
+- Fix parsing of single charge type_symbols (e.g., N+) in cif-core
+- Detect metal-coordination when parsing pdb
+- Handle additional elements in `guessElementSymbol*` (As, Li, Ga)
+- Add more element-pair thresholds for bonding (Ag-S, CoSb, Ga-F)
+- Add `metalCoordination` style param (dashed, solid) for bonds
+- Fix `unitSymmetryGroups` for representations with `includeParent` enabled
+- Add `convexHull` helper
+- Add `Structure.coordination` sites
+- Add `Polyhedron` representation showing coordination sites
+- Guard against `xr-spatial-tracking` blocked in `Permissions-Policy`
 
 ## [v5.6.1] - 2026-01-23
 - Disable occlusion culling in `ImagePass` (#1758)
