@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2018-2025 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2018-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author David Sehnal <david.sehnal@gmail.com>
  * @author Alexander Rose <alexander.rose@weirdbyte.de>
@@ -9,6 +9,7 @@
 import { ANVILMembraneOrientation } from '../../extensions/anvil/behavior';
 import { AssemblySymmetry } from '../../extensions/assembly-symmetry';
 import { Backgrounds } from '../../extensions/backgrounds';
+import { DebugHelpers } from '../../extensions/debug-helpers';
 import { DnatcoNtCs } from '../../extensions/dnatco';
 import { G3DFormat } from '../../extensions/g3d/format';
 import { GeometryExport } from '../../extensions/geo-export';
@@ -32,6 +33,7 @@ export const ExtensionMap = {
     // Mol* built-in extensions
     'mvs': PluginSpec.Behavior(MolViewSpec),
     'backgrounds': PluginSpec.Behavior(Backgrounds),
+    'debug-helpers': PluginSpec.Behavior(DebugHelpers),
     'model-export': PluginSpec.Behavior(ModelExport),
     'mp4-export': PluginSpec.Behavior(Mp4Export),
     'geo-export': PluginSpec.Behavior(GeometryExport),

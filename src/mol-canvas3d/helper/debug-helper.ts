@@ -6,87 +6,78 @@
 
 import { Scene } from '../../mol-gl/scene';
 import { WebGLContext } from '../../mol-gl/webgl/context';
-import { ParamDefinition as PD } from '../../mol-util/param-definition';
-import { BoundingSphereHelper, BoundingSphereHelperParams } from './debug/bounding-sphere-helper';
-import { ClipObjectHelper, ClipObjectHelperParams } from './debug/clip-object-helper';
-import { DirectVolumeHelper, DirectVolumeHelperParams } from './debug/direct-volume-helper';
-import { ImageHelper, ImageHelperParams } from './debug/image-helper';
-import { MeshHelper, MeshHelperParams } from './debug/mesh-helper';
 
-export const DebugHelperParams = {
-    ...BoundingSphereHelperParams,
-    ...ClipObjectHelperParams,
-    ...MeshHelperParams,
-    ...ImageHelperParams,
-    ...DirectVolumeHelperParams,
-};
-export type DebugHelperParams = typeof DebugHelperParams;
-export type DebugHelperProps = PD.Values<DebugHelperParams>;
+/** Interface that all debug helper entries must implement */
+export interface DebugHelperEntry {
+    readonly scene: Scene;
+    update(): void;
+    syncVisibility(): void;
+    clear(): void;
+    readonly isEnabled: boolean;
+    readonly props: Record<string, any>;
+    setProps(props: Record<string, any>): void;
+}
 
 export class DebugHelper {
-    readonly boundingSphereHelper: BoundingSphereHelper;
-    readonly clipObjectHelper: ClipObjectHelper;
-    readonly meshHelper: MeshHelper;
-    readonly imageHelper: ImageHelper;
-    readonly directVolumeHelper: DirectVolumeHelper;
+    readonly ctx: WebGLContext;
+    readonly parent: Scene;
 
-    constructor(ctx: WebGLContext, parent: Scene, props: Partial<DebugHelperProps>) {
-        this.boundingSphereHelper = new BoundingSphereHelper(ctx, parent, props);
-        this.clipObjectHelper = new ClipObjectHelper(ctx, parent, props);
-        this.meshHelper = new MeshHelper(ctx, parent, props);
-        this.imageHelper = new ImageHelper(ctx, parent, props);
-        this.directVolumeHelper = new DirectVolumeHelper(ctx, parent, props);
+    private readonly entries = new Map<string, DebugHelperEntry>();
+
+    constructor(ctx: WebGLContext, parent: Scene) {
+        this.ctx = ctx;
+        this.parent = parent;
     }
 
-    get boundingSphereScene() { return this.boundingSphereHelper.scene; }
-    get clipScene() { return this.clipObjectHelper.scene; }
-    get meshScene() { return this.meshHelper.scene; }
-    get imageScene() { return this.imageHelper.scene; }
-    get directVolumeScene() { return this.directVolumeHelper.scene; }
+    register(name: string, entry: DebugHelperEntry) {
+        this.entries.set(name, entry);
+    }
+
+    unregister(name: string) {
+        const entry = this.entries.get(name);
+        if (entry) {
+            entry.clear();
+            this.entries.delete(name);
+        }
+    }
+
+    get scenes(): Scene[] {
+        const result: Scene[] = [];
+        this.entries.forEach(entry => {
+            result.push(entry.scene);
+        });
+        return result;
+    }
 
     update() {
-        if (this.boundingSphereHelper.isEnabled) this.boundingSphereHelper.update();
-        if (this.clipObjectHelper.isEnabled) this.clipObjectHelper.update();
-        if (this.meshHelper.isEnabled) this.meshHelper.update();
-        if (this.imageHelper.isEnabled) this.imageHelper.update();
-        if (this.directVolumeHelper.isEnabled) this.directVolumeHelper.update();
+        this.entries.forEach(entry => {
+            if (entry.isEnabled) entry.update();
+        });
     }
 
     syncVisibility() {
-        this.boundingSphereHelper.syncVisibility();
-        this.clipObjectHelper.syncVisibility();
-        this.meshHelper.syncVisibility();
-        this.imageHelper.syncVisibility();
-        this.directVolumeHelper.syncVisibility();
+        this.entries.forEach(entry => {
+            entry.syncVisibility();
+        });
     }
 
     clear() {
-        this.boundingSphereHelper.clear();
-        this.clipObjectHelper.clear();
-        this.meshHelper.clear();
-        this.imageHelper.clear();
-        this.directVolumeHelper.clear();
+        this.entries.forEach(entry => {
+            entry.clear();
+        });
     }
 
     get isEnabled() {
-        return this.boundingSphereHelper.isEnabled || this.clipObjectHelper.isEnabled || this.meshHelper.isEnabled || this.imageHelper.isEnabled || this.directVolumeHelper.isEnabled;
+        let enabled = false;
+        this.entries.forEach(entry => {
+            if (entry.isEnabled) enabled = true;
+        });
+        return enabled;
     }
 
-    get props(): Readonly<DebugHelperProps> {
-        return {
-            ...this.boundingSphereHelper.props,
-            ...this.clipObjectHelper.props,
-            ...this.meshHelper.props,
-            ...this.imageHelper.props,
-            ...this.directVolumeHelper.props,
-        };
-    }
-
-    setProps(props: Partial<DebugHelperProps>) {
-        this.boundingSphereHelper.setProps(props);
-        this.clipObjectHelper.setProps(props);
-        this.meshHelper.setProps(props);
-        this.imageHelper.setProps(props);
-        this.directVolumeHelper.setProps(props);
+    setProps(props: Record<string, any>) {
+        this.entries.forEach(entry => {
+            entry.setProps(props);
+        });
     }
 }

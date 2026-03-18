@@ -452,11 +452,9 @@ export class DrawPass {
             }
             if (helper.debug.isEnabled) {
                 helper.debug.syncVisibility();
-                renderer.renderBlended(helper.debug.boundingSphereScene, camera);
-                renderer.renderBlended(helper.debug.clipScene, camera);
-                renderer.renderBlended(helper.debug.meshScene, camera);
-                renderer.renderBlended(helper.debug.imageScene, camera);
-                renderer.renderBlended(helper.debug.directVolumeScene, camera);
+                for (const scene of helper.debug.scenes) {
+                    renderer.renderBlended(scene, camera);
+                }
             }
             if (helper.pointer.isEnabled) {
                 helper.pointer.setCamera(camera);

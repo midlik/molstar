@@ -7,13 +7,12 @@
 import { Scene } from '../../mol-gl/scene';
 import { WebGLContext } from '../../mol-gl/webgl/context';
 import { ParamDefinition as PD } from '../../mol-util/param-definition';
-import { DebugHelper, DebugHelperParams } from './debug-helper';
+import { DebugHelper } from './debug-helper';
 import { CameraHelper, CameraHelperParams } from './camera-helper';
 import { HandleHelper, HandleHelperParams } from './handle-helper';
 import { PointerHelper, PointerHelperParams } from './pointer-helper';
 
 export const HelperParams = {
-    debug: PD.Group(DebugHelperParams),
     camera: PD.Group({
         helper: PD.Group(CameraHelperParams)
     }),
@@ -33,7 +32,7 @@ export class Helper {
     constructor(webgl: WebGLContext, scene: Scene, props: Partial<HelperProps> = {}) {
         const p = { ...DefaultHelperProps, ...props };
 
-        this.debug = new DebugHelper(webgl, scene, p.debug);
+        this.debug = new DebugHelper(webgl, scene);
         this.camera = new CameraHelper(webgl, p.camera.helper);
         this.handle = new HandleHelper(webgl, p.handle);
         this.pointer = new PointerHelper(webgl, p.pointer);
