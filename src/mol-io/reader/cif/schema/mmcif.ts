@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2017-2022 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
- * Code-generated 'mmCIF' schema file. Dictionary versions: mmCIF 5.410, IHM 1.28, MA 1.4.9.
+ * Code-generated 'mmCIF' schema file. Dictionary versions: mmCIF 5.411, IHM 1.28, MA 1.4.9.
  *
  * @author molstar/ciftools package
  */
@@ -2198,7 +2198,7 @@ export const mmCIF_Schema = {
          * The value of occupancy flag indicates whether the residue
          * is unobserved (= 1) or the coordinates have an occupancy of zero (=0)
          */
-        occupancy_flag: Aliased<'1' | '0'>(int),
+        occupancy_flag: Aliased<1 | 0>(int),
         /**
          * Part of the identifier for the unobserved or zero occupancy residue.
          *
@@ -3178,7 +3178,7 @@ export const mmCIF_Schema = {
          * The denominator used while calculating the sequence identity provided in
          * _ihm_starting_comparative_models.template_sequence_identity.
          */
-        template_sequence_identity_denominator: Aliased<'1' | '2' | '3' | '4' | '5'>(int),
+        template_sequence_identity_denominator: Aliased<1 | 2 | 3 | 4 | 5>(int),
         /**
          * The dataset list id corresponding to the template used to obtain the comparative model.
          * This data item is a pointer to _ihm_dataset_list.id in the IHM_DATASET_LIST category.
