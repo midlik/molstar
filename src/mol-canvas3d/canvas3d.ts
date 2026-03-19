@@ -23,7 +23,7 @@ import { MarkerAction } from '../mol-util/marker-action';
 import { Loci, EmptyLoci, isEmptyLoci } from '../mol-model/loci';
 import { Camera } from './camera';
 import { ParamDefinition as PD } from '../mol-util/param-definition';
-import { DebugHelper } from './helper/debug-helper';
+import { DebugRegistry } from './helper/debug-registry';
 import { SetUtils } from '../mol-util/set';
 import { Canvas3dInteractionHelper, Canvas3dInteractionHelperParams } from './helper/interaction-events';
 import { PostprocessingParams } from './passes/postprocessing';
@@ -387,7 +387,7 @@ interface Canvas3D {
     readonly stats: RendererStats
     readonly interaction: Canvas3dInteractionHelper['events']
 
-    readonly debugHelper: DebugHelper
+    readonly debugRegistry: DebugRegistry
 
     readonly xr: {
         request(): Promise<void>
@@ -1398,7 +1398,7 @@ namespace Canvas3D {
             get interaction() {
                 return interactionHelper.events;
             },
-            debugHelper: helper.debug,
+            debugRegistry: helper.debug,
             xr,
             dispose: () => {
                 contextLostSub?.unsubscribe();

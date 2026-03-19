@@ -14,6 +14,7 @@ import { LinesBuilder } from '../../mol-geo/geometry/lines/lines-builder';
 import { Mat4 } from '../../mol-math/linear-algebra/3d/mat4';
 import { DirectVolumeValues } from '../../mol-gl/renderable/direct-volume';
 import { addBox } from '../../mol-geo/geometry/lines/builder/box';
+import { DebugHelper } from '../../mol-canvas3d/helper/debug-registry';
 
 export const DirectVolumeHelperParams = {
     directVolumeEdges: PD.Boolean(false, { description: 'Show edges of visible direct-volume render objects.' }),
@@ -25,7 +26,7 @@ const directVolumeMaterialId = getNextMaterialId();
 
 type TrackedEntry = { ro: GraphicsRenderObject, version: number };
 
-export class DirectVolumeHelper {
+export class DirectVolumeHelper implements DebugHelper<DirectVolumeHelperProps> {
     readonly scene: Scene;
 
     private readonly parent: Scene;

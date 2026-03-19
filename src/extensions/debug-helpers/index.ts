@@ -34,21 +34,21 @@ export const DebugHelpers = PluginBehavior.create<DebugHelpersProps>({
             const canvas3d = this.ctx.canvas3d;
             if (!canvas3d) return;
 
-            const dh = canvas3d.debugHelper;
-            const { ctx, parent } = dh;
+            const dr = canvas3d.debugRegistry;
+            const { ctx, parent } = dr;
 
-            dh.register('bounding-sphere', new BoundingSphereHelper(ctx, parent, this.params));
-            dh.register('clip-object', new ClipObjectHelper(ctx, parent, this.params));
-            dh.register('mesh', new MeshHelper(ctx, parent, this.params));
-            dh.register('image', new ImageHelper(ctx, parent, this.params));
-            dh.register('direct-volume', new DirectVolumeHelper(ctx, parent, this.params));
+            dr.register('bounding-sphere', new BoundingSphereHelper(ctx, parent, this.params));
+            dr.register('clip-object', new ClipObjectHelper(ctx, parent, this.params));
+            dr.register('mesh', new MeshHelper(ctx, parent, this.params));
+            dr.register('image', new ImageHelper(ctx, parent, this.params));
+            dr.register('direct-volume', new DirectVolumeHelper(ctx, parent, this.params));
         }
 
         update(params: DebugHelpersProps) {
             const changed = super.update(params);
             const canvas3d = this.ctx.canvas3d;
             if (changed && canvas3d) {
-                canvas3d.debugHelper.setProps(params);
+                canvas3d.debugRegistry.setProps(params);
                 canvas3d.requestDraw();
             }
             return changed;
@@ -58,12 +58,12 @@ export const DebugHelpers = PluginBehavior.create<DebugHelpersProps>({
             const canvas3d = this.ctx.canvas3d;
             if (!canvas3d) return;
 
-            const dh = canvas3d.debugHelper;
-            dh.unregister('bounding-sphere');
-            dh.unregister('clip-object');
-            dh.unregister('mesh');
-            dh.unregister('image');
-            dh.unregister('direct-volume');
+            const dr = canvas3d.debugRegistry;
+            dr.unregister('bounding-sphere');
+            dr.unregister('clip-object');
+            dr.unregister('mesh');
+            dr.unregister('image');
+            dr.unregister('direct-volume');
         }
     },
     params: () => DebugHelpersParams,

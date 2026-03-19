@@ -20,6 +20,7 @@ import { Clip } from '../../mol-util/clip';
 import { addSphere as addLinesSphere } from '../../mol-geo/geometry/lines/builder/sphere';
 import { addBox } from '../../mol-geo/geometry/lines/builder/box';
 import { addPlane } from '../../mol-geo/geometry/lines/builder/plane';
+import { DebugHelper } from '../../mol-canvas3d/helper/debug-registry';
 
 export const ImageHelperParams = {
     imageEdges: PD.Boolean(false, { description: 'Show edges of visible image render objects.' }),
@@ -37,7 +38,7 @@ const _trimRot = Quat();
 const _trimTransform = Mat4();
 const _tmpMat = Mat4();
 
-export class ImageHelper {
+export class ImageHelper implements DebugHelper<ImageHelperProps> {
     readonly scene: Scene;
 
     private readonly parent: Scene;

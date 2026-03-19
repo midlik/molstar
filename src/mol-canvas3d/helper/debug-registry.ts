@@ -6,30 +6,36 @@
 
 import { Scene } from '../../mol-gl/scene';
 import { WebGLContext } from '../../mol-gl/webgl/context';
+import { isDebugMode } from '../../mol-util/debug';
 
-/** Interface that all debug helper entries must implement */
-export interface DebugHelperEntry {
+export interface DebugHelper<T extends {} = {}> {
     readonly scene: Scene;
     update(): void;
     syncVisibility(): void;
     clear(): void;
     readonly isEnabled: boolean;
-    readonly props: Record<string, any>;
-    setProps(props: Record<string, any>): void;
+    readonly props: T;
+    setProps(props: Partial<T>): void;
 }
 
-export class DebugHelper {
+export class DebugRegistry {
     readonly ctx: WebGLContext;
     readonly parent: Scene;
 
-    private readonly entries = new Map<string, DebugHelperEntry>();
+    private readonly entries = new Map<string, DebugHelper>();
 
     constructor(ctx: WebGLContext, parent: Scene) {
         this.ctx = ctx;
         this.parent = parent;
     }
 
-    register(name: string, entry: DebugHelperEntry) {
+    register<T extends {}>(name: string, entry: DebugHelper<T>) {
+        if (this.entries.has(name)) {
+            if (isDebugMode) {
+                console.warn(`Debug helper with name '${name}' already exists, replacing.`);
+            }
+            this.entries.get(name)!.clear();
+        }
         this.entries.set(name, entry);
     }
 
@@ -42,11 +48,7 @@ export class DebugHelper {
     }
 
     get scenes(): Scene[] {
-        const result: Scene[] = [];
-        this.entries.forEach(entry => {
-            result.push(entry.scene);
-        });
-        return result;
+        return Array.from(this.entries.values()).map(e => e.scene);
     }
 
     update() {
@@ -75,7 +77,7 @@ export class DebugHelper {
         return enabled;
     }
 
-    setProps(props: Record<string, any>) {
+    setProps<T extends {}>(props: Partial<T>) {
         this.entries.forEach(entry => {
             entry.setProps(props);
         });

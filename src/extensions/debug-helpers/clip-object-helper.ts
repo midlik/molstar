@@ -22,6 +22,7 @@ import { Box } from '../../mol-geo/primitive/box';
 import { Plane } from '../../mol-geo/primitive/plane';
 import { Cylinder } from '../../mol-geo/primitive/cylinder';
 import { Sphere } from '../../mol-geo/primitive/sphere';
+import { DebugHelper } from '../../mol-canvas3d/helper/debug-registry';
 
 export const ClipObjectHelperParams = {
     clipObjects: PD.Boolean(false, { description: 'Show clip-objects of visible render objects.' }),
@@ -88,7 +89,7 @@ const _yAxis = Vec3.create(0, 1, 0);
 const _zAxis = Vec3.create(0, 0, 1);
 const _indicatorPos = Vec3();
 
-export class ClipObjectHelper {
+export class ClipObjectHelper implements DebugHelper<ClipObjectHelperProps> {
     readonly scene: Scene;
 
     private readonly parent: Scene;

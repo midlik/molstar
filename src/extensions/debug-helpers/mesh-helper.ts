@@ -14,6 +14,7 @@ import { LinesBuilder } from '../../mol-geo/geometry/lines/lines-builder';
 import { Vec3 } from '../../mol-math/linear-algebra/3d/vec3';
 import { Mat4 } from '../../mol-math/linear-algebra/3d/mat4';
 import { MeshValues } from '../../mol-gl/renderable/mesh';
+import { DebugHelper } from '../../mol-canvas3d/helper/debug-registry';
 
 export const MeshHelperParams = {
     meshNormals: PD.Boolean(false, { description: 'Show normals of visible mesh render objects.' }),
@@ -28,7 +29,7 @@ const _n = Vec3();
 const _start = Vec3();
 const _end = Vec3();
 
-export class MeshHelper {
+export class MeshHelper implements DebugHelper<MeshHelperProps> {
     readonly scene: Scene;
 
     private readonly parent: Scene;

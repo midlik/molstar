@@ -18,6 +18,7 @@ import { TransformData } from '../../mol-geo/geometry/transform-data';
 import { sphereVertexCount } from '../../mol-geo/primitive/sphere';
 import { ValueCell } from '../../mol-util';
 import { Geometry } from '../../mol-geo/geometry/geometry';
+import { DebugHelper } from '../../mol-canvas3d/helper/debug-registry';
 
 export const BoundingSphereHelperParams = {
     sceneBoundingSpheres: PD.Boolean(false, { description: 'Show full scene bounding spheres.' }),
@@ -30,7 +31,7 @@ export type BoundingSphereHelperProps = PD.Values<BoundingSphereHelperParams>;
 
 type BoundingSphereData = { boundingSphere: Sphere3D, renderObject: GraphicsRenderObject, mesh: Mesh }
 
-export class BoundingSphereHelper {
+export class BoundingSphereHelper implements DebugHelper<BoundingSphereHelperProps> {
     readonly scene: Scene;
 
     private readonly parent: Scene;
