@@ -195,6 +195,7 @@ function molstarTreeToEntry(
         snapshot.camera = createPluginStateSnapshotCamera(plugin, context, { previousTransitionDurationMs: metadata.previousTransitionDurationMs });
     }
     snapshot.durationInMs = metadata.linger_duration_ms + (metadata.previousTransitionDurationMs ?? 0);
+    snapshot.structureFocus = {}; // avoid structure focus persisting through states (causes weird behaviors, e.g. when turning on Volume Streaming)
 
     if (tree.custom?.molstar_on_load_markdown_commands) {
         snapshot.onLoadMarkdownCommands = tree.custom.molstar_on_load_markdown_commands;
