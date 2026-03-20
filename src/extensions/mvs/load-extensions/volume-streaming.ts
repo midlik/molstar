@@ -94,7 +94,7 @@ export const VolumeStreamingExtension: MolstarLoadingExtension<{}> = {
             entries: params.entries,
             defaultView: params.view,
             defaultChannelParams: params.channel_params && mapObjectMap(params.channel_params, normalizeChannelParams),
-        });
+        }, { state: { isCollapsed: true } });
 
         const streamingBehavior = UpdateTarget.apply(streamingInfo, CreateVolumeStreamingBehavior);
 
