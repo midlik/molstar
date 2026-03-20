@@ -386,3 +386,12 @@ export const BaseSchema = {
 } as const;
 export type BaseSchema = typeof BaseSchema
 export type BaseValues = Values<BaseSchema>
+
+//
+
+export const InteriorSchema = {
+    uInteriorColor: UniformSpec('v4'),
+    uInteriorSubstance: UniformSpec('v4'),
+} as const;
+export type InteriorSchema = typeof InteriorSchema
+export type InteriorValues = Values<InteriorSchema>

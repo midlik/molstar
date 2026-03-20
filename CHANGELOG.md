@@ -8,6 +8,8 @@ Note that since we don't clearly distinguish between a public and private interf
 - Add `putty` as a mol-view-spec representation.
 - Fix detecting sidechain-only structures as coarse-grained (#1420)
 - Fix clip-object transform due to missing axis normalization
+- Sequence alignment: Fix return type & improve scoring for unknown residues
+- Use PDB SEQRES block to show unresolved residues in Sequence toolbar
 - MolViewSpec
   - Add `VolumeStreamingExtension` (`molstar_volume_streaming` custom property)
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2017-2022 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2017-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Alexander Rose <alexander.rose@weirdbyte.de>
  */
@@ -65,7 +65,9 @@ function getTypeDef(c: Column): string {
         case 'float': return 'float';
         case 'coord': return 'coord';
         case 'enum':
-            return `Aliased<'${c.values.map(v => v.replace(/'/g, '\\\'')).join(`' | '`)}'>(${c.subType})`;
+            return c.subType === 'int'
+                ? `Aliased<${c.values.join(' | ')}>(${c.subType})`
+                : `Aliased<'${c.values.map(v => v.replace(/'/g, '\\\'')).join(`' | '`)}'>(${c.subType})`;
         case 'matrix':
             return `Matrix(${c.rows}, ${c.columns})`;
         case 'vector':
