@@ -23,7 +23,7 @@ import { MarkerAction } from '../mol-util/marker-action';
 import { Loci, EmptyLoci, isEmptyLoci } from '../mol-model/loci';
 import { Camera } from './camera';
 import { ParamDefinition as PD } from '../mol-util/param-definition';
-import { DebugHelperParams } from './helper/bounding-sphere-helper';
+import { DebugRegistry } from './helper/debug-registry';
 import { SetUtils } from '../mol-util/set';
 import { Canvas3dInteractionHelper, Canvas3dInteractionHelperParams } from './helper/interaction-events';
 import { PostprocessingParams } from './passes/postprocessing';
@@ -109,7 +109,6 @@ export const Canvas3DParams = {
     renderer: PD.Group(RendererParams),
     trackball: PD.Group(TrackballControlsParams),
     interaction: PD.Group(Canvas3dInteractionHelperParams),
-    debug: PD.Group(DebugHelperParams),
     handle: PD.Group(HandleHelperParams),
     pointer: PD.Group(PointerHelperParams),
     xr: PD.Group(XRManagerParams, { label: 'XR' }),
@@ -387,6 +386,8 @@ interface Canvas3D {
     readonly input: InputObserver
     readonly stats: RendererStats
     readonly interaction: Canvas3dInteractionHelper['events']
+
+    readonly debugRegistry: DebugRegistry
 
     readonly xr: {
         request(): Promise<void>
@@ -1078,7 +1079,6 @@ namespace Canvas3D {
                 renderer: { ...renderer.props },
                 trackball: { ...controls.props },
                 interaction: { ...interactionHelper.props },
-                debug: { ...helper.debug.props },
                 handle: { ...helper.handle.props },
                 pointer: { ...helper.pointer.props },
                 xr: { ...xrManager.props },
@@ -1348,7 +1348,6 @@ namespace Canvas3D {
                 }
                 if (props.trackball) controls.setProps(props.trackball);
                 if (props.interaction) interactionHelper.setProps(props.interaction);
-                if (props.debug) helper.debug.setProps(props.debug);
                 if (props.handle) helper.handle.setProps(props.handle);
                 if (props.pointer) helper.pointer.setProps(props.pointer);
                 if (props.xr) xrManager.setProps(props.xr);
@@ -1399,6 +1398,7 @@ namespace Canvas3D {
             get interaction() {
                 return interactionHelper.events;
             },
+            debugRegistry: helper.debug,
             xr,
             dispose: () => {
                 contextLostSub?.unsubscribe();
