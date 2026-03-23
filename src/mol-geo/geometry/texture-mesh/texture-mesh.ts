@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019-2025 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2019-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Alexander Rose <alexander.rose@weirdbyte.de>
  * @author Cai Huiyu <szmun.caihy@gmail.com>
@@ -28,7 +28,7 @@ import { createEmptySubstance } from '../substance-data';
 import { RenderableState } from '../../../mol-gl/renderable';
 import { WebGLContext } from '../../../mol-gl/webgl/context';
 import { createEmptyEmissive } from '../emissive-data';
-import { getInteriorColor, getInteriorParam, getInteriorSubstance } from '../interior';
+import { createInteriorValues, getInteriorParam, updateInteriorValues } from '../interior';
 
 export interface TextureMesh {
     readonly kind: 'texture-mesh',
@@ -246,10 +246,10 @@ export namespace TextureMesh {
             dTransparentBackfaces: ValueCell.create(props.transparentBackfaces),
             uBumpFrequency: ValueCell.create(props.bumpFrequency),
             uBumpAmplitude: ValueCell.create(props.bumpAmplitude),
-            uInteriorColor: ValueCell.create(getInteriorColor(props.interior, Vec4())),
-            uInteriorSubstance: ValueCell.create(getInteriorSubstance(props.interior, Vec4())),
 
             meta: ValueCell.create(textureMesh.meta),
+
+            ...createInteriorValues(props.interior),
         };
     }
 
@@ -270,8 +270,7 @@ export namespace TextureMesh {
         ValueCell.updateIfChanged(values.dTransparentBackfaces, props.transparentBackfaces);
         ValueCell.updateIfChanged(values.uBumpFrequency, props.bumpFrequency);
         ValueCell.updateIfChanged(values.uBumpAmplitude, props.bumpAmplitude);
-        ValueCell.update(values.uInteriorColor, getInteriorColor(props.interior, values.uInteriorColor.ref.value));
-        ValueCell.update(values.uInteriorSubstance, getInteriorSubstance(props.interior, values.uInteriorSubstance.ref.value));
+        updateInteriorValues(values, props.interior);
     }
 
     function updateBoundingSphere(values: TextureMeshValues, textureMesh: TextureMesh) {

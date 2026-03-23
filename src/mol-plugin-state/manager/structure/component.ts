@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019-2025 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2019-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author David Sehnal <david.sehnal@gmail.com>
  * @author Alexander Rose <alexander.rose@weirdbyte.de>
@@ -97,7 +97,8 @@ class StructureComponentManager extends StatefulPluginComponent<StructureCompone
             if (r.cell.transform.transformer !== StructureRepresentation3D) continue;
 
             const params = r.cell.transform.params as StateTransformer.Params<StructureRepresentation3D>;
-            if (!!params.type.params.ignoreHydrogens !== ignoreHydrogens || params.type.params.ignoreHydrogensVariant !== ignoreHydrogensVariant || params.type.params.quality !== quality || params.type.params.ignoreLight !== ignoreLight || !Material.areEqual(params.type.params.material, material) || !PD.areEqual(Clip.Params, params.type.params.clip, clip) || !areInteriorPropsEquals(params.type.params.interior, interior)) {
+            const pInterior = params.type.params.interior;
+            if (!!params.type.params.ignoreHydrogens !== ignoreHydrogens || params.type.params.ignoreHydrogensVariant !== ignoreHydrogensVariant || params.type.params.quality !== quality || params.type.params.ignoreLight !== ignoreLight || !Material.areEqual(params.type.params.material, material) || !PD.areEqual(Clip.Params, params.type.params.clip, clip) || (pInterior && !areInteriorPropsEquals(pInterior, interior))) {
                 update.to(r.cell).update(old => {
                     old.type.params.ignoreHydrogens = ignoreHydrogens;
                     old.type.params.ignoreHydrogensVariant = ignoreHydrogensVariant;
@@ -105,7 +106,7 @@ class StructureComponentManager extends StatefulPluginComponent<StructureCompone
                     old.type.params.ignoreLight = ignoreLight;
                     old.type.params.material = material;
                     old.type.params.clip = clip;
-                    old.type.params.interior = interior;
+                    if (pInterior) old.type.params.interior = interior;
                 });
             }
         }
