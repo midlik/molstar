@@ -27,7 +27,7 @@ import { Vec2, Vec3, Vec4 } from '../../../mol-math/linear-algebra';
 import { RenderableState } from '../../../mol-gl/renderable';
 import { createEmptySubstance } from '../substance-data';
 import { createEmptyEmissive } from '../emissive-data';
-import { getInteriorColor, getInteriorParam, getInteriorSubstance } from '../interior';
+import { createInteriorValues, getInteriorParam, updateInteriorValues } from '../interior';
 
 export interface Spheres {
     readonly kind: 'spheres',
@@ -362,12 +362,12 @@ export namespace Spheres {
             uAlphaThickness: ValueCell.create(props.alphaThickness),
             uBumpFrequency: ValueCell.create(props.bumpFrequency),
             uBumpAmplitude: ValueCell.create(props.bumpAmplitude),
-            uInteriorColor: ValueCell.create(getInteriorColor(props.interior, Vec4())),
-            uInteriorSubstance: ValueCell.create(getInteriorSubstance(props.interior, Vec4())),
 
             lodLevels: spheres.shaderData.lodLevels,
             centerBuffer: spheres.centerBuffer,
             groupBuffer: spheres.groupBuffer,
+
+            ...createInteriorValues(props.interior),
         };
     }
 
@@ -391,8 +391,7 @@ export namespace Spheres {
         ValueCell.updateIfChanged(values.uAlphaThickness, props.alphaThickness);
         ValueCell.updateIfChanged(values.uBumpFrequency, props.bumpFrequency);
         ValueCell.updateIfChanged(values.uBumpAmplitude, props.bumpAmplitude);
-        ValueCell.update(values.uInteriorColor, getInteriorColor(props.interior, values.uInteriorColor.ref.value));
-        ValueCell.update(values.uInteriorSubstance, getInteriorSubstance(props.interior, values.uInteriorSubstance.ref.value));
+        updateInteriorValues(values, props.interior);
 
         const lodLevels = getLodLevels(values.lodLevels.ref.value as LodLevelsValue);
         if (!areLodLevelsEqual(props.lodLevels, lodLevels)) {

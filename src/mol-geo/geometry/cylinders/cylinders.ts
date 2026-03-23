@@ -28,7 +28,7 @@ import { CylindersValues } from '../../../mol-gl/renderable/cylinders';
 import { RenderableState } from '../../../mol-gl/renderable';
 import { createEmptySubstance } from '../substance-data';
 import { createEmptyEmissive } from '../emissive-data';
-import { getInteriorColor, getInteriorParam, getInteriorSubstance } from '../interior';
+import { getInteriorParam, updateInteriorValues, createInteriorValues } from '../interior';
 
 export interface Cylinders {
     readonly kind: 'cylinders',
@@ -272,9 +272,9 @@ export namespace Cylinders {
             dSolidInterior: ValueCell.create(props.solidInterior),
             uBumpFrequency: ValueCell.create(props.bumpFrequency),
             uBumpAmplitude: ValueCell.create(props.bumpAmplitude),
-            uInteriorColor: ValueCell.create(getInteriorColor(props.interior, Vec4())),
-            uInteriorSubstance: ValueCell.create(getInteriorSubstance(props.interior, Vec4())),
             dDualColor: ValueCell.create(props.colorMode === 'interpolate'),
+
+            ...createInteriorValues(props.interior),
         };
     }
 
@@ -295,9 +295,8 @@ export namespace Cylinders {
         ValueCell.updateIfChanged(values.dSolidInterior, props.solidInterior);
         ValueCell.updateIfChanged(values.uBumpFrequency, props.bumpFrequency);
         ValueCell.updateIfChanged(values.uBumpAmplitude, props.bumpAmplitude);
-        ValueCell.update(values.uInteriorColor, getInteriorColor(props.interior, values.uInteriorColor.ref.value));
-        ValueCell.update(values.uInteriorSubstance, getInteriorSubstance(props.interior, values.uInteriorSubstance.ref.value));
         ValueCell.updateIfChanged(values.dDualColor, props.colorMode === 'interpolate');
+        updateInteriorValues(values, props.interior);
     }
 
     function updateBoundingSphere(values: CylindersValues, cylinders: Cylinders) {

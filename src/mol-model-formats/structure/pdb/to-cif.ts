@@ -4,6 +4,7 @@
  * @author David Sehnal <david.sehnal@gmail.com>
  * @author Alexander Rose <alexander.rose@weirdbyte.de>
  * @author Yana Rose <yana.v.rose@gmail.com>
+ * @author Ryan DiRisio <rjdiris@gmail.com>
  */
 
 import { CifCategory, CifField, CifFrame } from '../../../mol-io/reader/cif';
@@ -11,7 +12,7 @@ import { Tokenizer } from '../../../mol-io/reader/common/text/tokenizer';
 import { PdbFile } from '../../../mol-io/reader/pdb/schema';
 import { parseCryst1, parseRemark350, parseMtrix } from './assembly';
 import { parseHelix, parseSheet } from './secondary-structure';
-import { parseCmpnd, parseHetnam, parseSeqres } from './entity';
+import { parseCmpnd, parseHetnam, parseSeqres, getEntityPolySeq, getPdbxUnobsOrZeroOccResidues } from './entity';
 import { ComponentBuilder } from '../common/component';
 import { EntityBuilder } from '../common/entity';
 import { Column } from '../../../mol-data/db';
@@ -63,7 +64,7 @@ export async function pdbToMmCif(pdb: PdbFile): Promise<CifFrame> {
     let modelNum = 0, modelStr = '';
     let conectRange: [number, number] | undefined = undefined;
     let hasAssemblies = false;
-    let hasSeqRes = false;
+    let seqresMap: Map<string, string[]> | undefined = undefined;
     const terIndices = new Set<number>();
 
     for (let i = 0, _i = lines.count; i < _i; i++) {
@@ -182,10 +183,15 @@ export async function pdbToMmCif(pdb: PdbFile): Promise<CifFrame> {
                         if (!substringStartsWith(data, s, e, 'SEQRES')) break;
                         j++;
                     }
-                    // TODO: also create `entity_poly_seq` category; need to ensure `label_seq_id` consistency
-                    entityBuilder.setSeqres(parseSeqres(lines, i, j));
+                    if (seqresMap) {
+                        if (isDebugMode) {
+                            console.log('only single SEQRES block allowed, ignoring others');
+                        }
+                    } else {
+                        seqresMap = parseSeqres(lines, i, j);
+                        entityBuilder.setSeqres(seqresMap);
+                    }
                     i = j - 1;
-                    hasSeqRes = true;
                 }
                 // TODO: SCALE record => cif.atom_sites.fract_transf_matrix, cif.atom_sites.fract_transf_vector
                 break;
@@ -231,7 +237,7 @@ export async function pdbToMmCif(pdb: PdbFile): Promise<CifFrame> {
         const asymId = labelAsymIdHelper.get(i);
         atomSite.label_entity_id[i] = entityBuilder.getEntityId(compId, moleculeType, asymId);
     }
-    const atom_site = getAtomSite(atomSite, labelAsymIdHelper, { hasAssemblies, hasSeqRes });
+    const atom_site = getAtomSite(atomSite, labelAsymIdHelper, { hasAssemblies, seqresMap });
     if (variant === 'pdb') delete atom_site.partial_charge;
 
     if (conectRange) {
@@ -244,6 +250,15 @@ export async function pdbToMmCif(pdb: PdbFile): Promise<CifFrame> {
         atom_site: CifCategory.ofFields('atom_site', atom_site),
         atom_site_anisotrop: CifCategory.ofFields('atom_site_anisotrop', getAnisotropic(anisotropic))
     } as any;
+
+    // Build entity_poly_seq and pdbx_unobs_or_zero_occ_residues from SEQRES
+    if (seqresMap) {
+        const entityPolySeq = getEntityPolySeq(seqresMap, chainId => entityBuilder.getEntityIdForChain(chainId));
+        if (entityPolySeq) helperCategories.push(entityPolySeq);
+
+        const pdbxUnobsOrZeroOccResidues = getPdbxUnobsOrZeroOccResidues(seqresMap, chainId => entityBuilder.getEntityIdForChain(chainId), atom_site, modelNum);
+        if (pdbxUnobsOrZeroOccResidues) helperCategories.push(pdbxUnobsOrZeroOccResidues);
+    }
 
     for (const c of helperCategories) {
         categories[c.name] = c;

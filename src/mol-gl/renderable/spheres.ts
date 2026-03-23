@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019-2025 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2019-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Alexander Rose <alexander.rose@weirdbyte.de>
  */
@@ -7,7 +7,7 @@
 import { Renderable, RenderableState, createRenderable } from '../renderable';
 import { WebGLContext } from '../webgl/context';
 import { createGraphicsRenderItem, Transparency } from '../webgl/render-item';
-import { GlobalUniformSchema, BaseSchema, Values, InternalSchema, SizeSchema, InternalValues, ValueSpec, DefineSpec, GlobalTextureSchema, UniformSpec, TextureSpec, GlobalDefineValues, GlobalDefines, GlobalDefineSchema } from './schema';
+import { GlobalUniformSchema, BaseSchema, Values, InternalSchema, SizeSchema, InternalValues, ValueSpec, DefineSpec, GlobalTextureSchema, UniformSpec, TextureSpec, GlobalDefineValues, GlobalDefines, GlobalDefineSchema, InteriorSchema } from './schema';
 import { SpheresShaderCode } from '../shader-code';
 import { ValueCell } from '../../mol-util';
 
@@ -30,12 +30,12 @@ export const SpheresSchema = {
     uAlphaThickness: UniformSpec('f'),
     uBumpFrequency: UniformSpec('f', 'material'),
     uBumpAmplitude: UniformSpec('f', 'material'),
-    uInteriorColor: UniformSpec('v4'),
-    uInteriorSubstance: UniformSpec('v4'),
 
     lodLevels: ValueSpec('unknown'),
     centerBuffer: ValueSpec('float32'),
     groupBuffer: ValueSpec('float32'),
+
+    ...InteriorSchema,
 };
 export type SpheresSchema = typeof SpheresSchema
 export type SpheresValues = Values<SpheresSchema>
