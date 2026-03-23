@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2020-2025 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2020-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Alexander Rose <alexander.rose@weirdbyte.de>
  */
@@ -7,13 +7,12 @@
 import { Scene } from '../../mol-gl/scene';
 import { WebGLContext } from '../../mol-gl/webgl/context';
 import { ParamDefinition as PD } from '../../mol-util/param-definition';
-import { BoundingSphereHelper, DebugHelperParams } from './bounding-sphere-helper';
+import { DebugRegistry } from './debug-registry';
 import { CameraHelper, CameraHelperParams } from './camera-helper';
 import { HandleHelper, HandleHelperParams } from './handle-helper';
 import { PointerHelper, PointerHelperParams } from './pointer-helper';
 
 export const HelperParams = {
-    debug: PD.Group(DebugHelperParams),
     camera: PD.Group({
         helper: PD.Group(CameraHelperParams)
     }),
@@ -25,7 +24,7 @@ export type HelperProps = PD.Values<typeof HelperParams>
 
 
 export class Helper {
-    readonly debug: BoundingSphereHelper;
+    readonly debug: DebugRegistry;
     readonly camera: CameraHelper;
     readonly handle: HandleHelper;
     readonly pointer: PointerHelper;
@@ -33,7 +32,7 @@ export class Helper {
     constructor(webgl: WebGLContext, scene: Scene, props: Partial<HelperProps> = {}) {
         const p = { ...DefaultHelperProps, ...props };
 
-        this.debug = new BoundingSphereHelper(webgl, scene, p.debug);
+        this.debug = new DebugRegistry(webgl, scene);
         this.camera = new CameraHelper(webgl, p.camera.helper);
         this.handle = new HandleHelper(webgl, p.handle);
         this.pointer = new PointerHelper(webgl, p.pointer);

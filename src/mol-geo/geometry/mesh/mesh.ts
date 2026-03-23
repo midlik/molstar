@@ -29,7 +29,7 @@ import { arraySetAdd } from '../../../mol-util/array';
 import { degToRad } from '../../../mol-math/misc';
 import { createEmptySubstance } from '../substance-data';
 import { createEmptyEmissive } from '../emissive-data';
-import { getInteriorColor, getInteriorParam, getInteriorSubstance } from '../interior';
+import { createInteriorValues, getInteriorParam, updateInteriorValues } from '../interior';
 
 export interface Mesh {
     readonly kind: 'mesh',
@@ -725,10 +725,10 @@ export namespace Mesh {
             dTransparentBackfaces: ValueCell.create(props.transparentBackfaces),
             uBumpFrequency: ValueCell.create(props.bumpFrequency),
             uBumpAmplitude: ValueCell.create(props.bumpAmplitude),
-            uInteriorColor: ValueCell.create(getInteriorColor(props.interior, Vec4())),
-            uInteriorSubstance: ValueCell.create(getInteriorSubstance(props.interior, Vec4())),
 
             meta: ValueCell.create(mesh.meta),
+
+            ...createInteriorValues(props.interior),
         };
     }
 
@@ -749,8 +749,7 @@ export namespace Mesh {
         ValueCell.updateIfChanged(values.dTransparentBackfaces, props.transparentBackfaces);
         ValueCell.updateIfChanged(values.uBumpFrequency, props.bumpFrequency);
         ValueCell.updateIfChanged(values.uBumpAmplitude, props.bumpAmplitude);
-        ValueCell.update(values.uInteriorColor, getInteriorColor(props.interior, values.uInteriorColor.ref.value));
-        ValueCell.update(values.uInteriorSubstance, getInteriorSubstance(props.interior, values.uInteriorSubstance.ref.value));
+        updateInteriorValues(values, props.interior);
     }
 
     function updateBoundingSphere(values: MeshValues, mesh: Mesh) {

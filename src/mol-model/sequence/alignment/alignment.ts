@@ -1,9 +1,11 @@
 /**
- * Copyright (c) 2020 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2020-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Alexander Rose <alexander.rose@weirdbyte.de>
+ * @author Ryan DiRisio <rjdiris@gmail.com>
  */
 
+import { isDebugMode } from '../../../mol-util/debug';
 import { SubstitutionMatrix, SubstitutionMatrices, SubstitutionMatrixData } from './substitution-matrix';
 
 const DefaultAlignmentOptions = {
@@ -67,7 +69,11 @@ class Alignment {
             return function score(i: number, j: number) {
                 const cA = seqA[i];
                 const cB = seqB[j];
-                return substMatrix[cA]?.[cB] ?? -4;
+                const val = substMatrix[cA]?.[cB];
+                if (isDebugMode && val === undefined) {
+                    console.warn(`Substitution matrix has no entry for residue pair ('${cA}', '${cB}') (seqA[${i}], seqB[${j}]). Non-standard residues are not supported with BLOSUM matrices.`);
+                }
+                return val ?? 0;
             };
         } else {
             return function scoreNoSubstMat(i: number, j: number) {
@@ -109,7 +115,7 @@ class Alignment {
         }
     }
 
-    trace(): { aliA: ArrayLike<string>, aliB: ArrayLike<string>, score: number } {
+    trace(): { aliA: string[], aliB: string[], score: number } {
         const scoreFn = this.makeScoreFn();
         const { V, H, S, seqA, seqB, gapExtensionPenalty, gapPenalty } = this;
 
@@ -118,8 +124,8 @@ class Alignment {
         let mat: 'S' | 'V' | 'H';
         let score: number;
 
-        let aliA = '';
-        let aliB = '';
+        const aliA: string[] = [];
+        const aliB: string[] = [];
 
         if (S[i][j] >= V[i][j]) {
             mat = 'S';
@@ -135,8 +141,8 @@ class Alignment {
         while (i > 0 && j > 0) {
             if (mat === 'S') {
                 if (S[i][j] === S[i - 1][j - 1] + scoreFn(i - 1, j - 1)) {
-                    aliA = seqA[i - 1] + aliA;
-                    aliB = seqB[j - 1] + aliB;
+                    aliA.push(seqA[i - 1]);
+                    aliB.push(seqB[j - 1]);
                     --i;
                     --j;
                     mat = 'S';
@@ -150,13 +156,13 @@ class Alignment {
                 }
             } else if (mat === 'V') {
                 if (V[i][j] === V[i - 1][j] + gapExtensionPenalty) {
-                    aliA = seqA[i - 1] + aliA;
-                    aliB = '-' + aliB;
+                    aliA.push(seqA[i - 1]);
+                    aliB.push('-');
                     --i;
                     mat = 'V';
                 } else if (V[i][j] === S[i - 1][j] + gapPenalty) {
-                    aliA = seqA[i - 1] + aliA;
-                    aliB = '-' + aliB;
+                    aliA.push(seqA[i - 1]);
+                    aliB.push('-');
                     --i;
                     mat = 'S';
                 } else {
@@ -164,13 +170,13 @@ class Alignment {
                 }
             } else if (mat === 'H') {
                 if (H[i][j] === H[i][j - 1] + gapExtensionPenalty) {
-                    aliA = '-' + aliA;
-                    aliB = seqB[j - 1] + aliB;
+                    aliA.push('-');
+                    aliB.push(seqB[j - 1]);
                     --j;
                     mat = 'H';
                 } else if (H[i][j] === S[i][j - 1] + gapPenalty) {
-                    aliA = '-' + aliA;
-                    aliB = seqB[j - 1] + aliB;
+                    aliA.push('-');
+                    aliB.push(seqB[j - 1]);
                     --j;
                     mat = 'S';
                 } else {
@@ -180,16 +186,20 @@ class Alignment {
         }
 
         while (i > 0) {
-            aliA = seqA[i - 1] + aliA;
-            aliB = '-' + aliB;
+            aliA.push(seqA[i - 1]);
+            aliB.push('-');
             --i;
         }
 
         while (j > 0) {
-            aliA = '-' + aliA;
-            aliB = seqB[j - 1] + aliB;
+            aliA.push('-');
+            aliB.push(seqB[j - 1]);
             --j;
         }
+
+        // The traceback builds arrays in reverse order; reverse them in place.
+        aliA.reverse();
+        aliB.reverse();
 
         return { aliA, aliB, score };
     }

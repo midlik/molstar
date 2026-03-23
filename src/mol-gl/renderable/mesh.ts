@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2018-2025 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2018-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Alexander Rose <alexander.rose@weirdbyte.de>
  */
@@ -7,7 +7,7 @@
 import { Renderable, RenderableState, createRenderable } from '../renderable';
 import { WebGLContext } from '../webgl/context';
 import { createGraphicsRenderItem, Transparency } from '../webgl/render-item';
-import { GlobalUniformSchema, BaseSchema, AttributeSpec, ElementsSpec, DefineSpec, Values, InternalSchema, InternalValues, GlobalTextureSchema, ValueSpec, UniformSpec, GlobalDefineSchema, GlobalDefineValues, GlobalDefines } from './schema';
+import { GlobalUniformSchema, BaseSchema, AttributeSpec, ElementsSpec, DefineSpec, Values, InternalSchema, InternalValues, GlobalTextureSchema, ValueSpec, UniformSpec, GlobalDefineSchema, GlobalDefineValues, GlobalDefines, InteriorSchema } from './schema';
 import { MeshShaderCode } from '../shader-code';
 import { ValueCell } from '../../mol-util';
 
@@ -27,9 +27,9 @@ export const MeshSchema = {
     dTransparentBackfaces: DefineSpec('string', ['off', 'on', 'opaque']),
     uBumpFrequency: UniformSpec('f', 'material'),
     uBumpAmplitude: UniformSpec('f', 'material'),
-    uInteriorColor: UniformSpec('v4'),
-    uInteriorSubstance: UniformSpec('v4'),
-    meta: ValueSpec('unknown')
+    meta: ValueSpec('unknown'),
+
+    ...InteriorSchema,
 } as const;
 export type MeshSchema = typeof MeshSchema
 export type MeshValues = Values<MeshSchema>
