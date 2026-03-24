@@ -31,6 +31,7 @@ import { MVSTrajectoryWithCoordinates } from './components/trajectory';
 import { generateStateTransition } from './helpers/animation';
 import { IsHiddenCustomStateExtension } from './load-extensions/is-hidden-custom-state';
 import { NonCovalentInteractionsExtension } from './load-extensions/non-covalent-interactions';
+import { VolumeStreamingExtension } from './load-extensions/volume-streaming';
 import { LoadingActions, LoadingExtension, loadTreeVirtual, UpdateTarget } from './load-generic';
 import { AnnotationFromSourceKind, AnnotationFromUriKind, clippingForNode, collectAnnotationReferences, collectAnnotationTooltips, collectInlineLabels, collectInlineTooltips, colorThemeForNode, componentFromXProps, componentPropsFromSelector, isPhantomComponent, labelFromXProps, makeNearestReprMap, prettyNameFromSelector, representationProps, structureProps, transformAndInstantiateStructure, transformAndInstantiateVolume, volumeColorThemeForNode, volumeRepresentationProps } from './load-helpers';
 import { MVSData, MVSData_States, Snapshot, SnapshotMetadata } from './mvs-data';
@@ -194,6 +195,7 @@ function molstarTreeToEntry(
         snapshot.camera = createPluginStateSnapshotCamera(plugin, context, { previousTransitionDurationMs: metadata.previousTransitionDurationMs });
     }
     snapshot.durationInMs = metadata.linger_duration_ms + (metadata.previousTransitionDurationMs ?? 0);
+    snapshot.structureFocus = {}; // avoid structure focus persisting through states (causes weird behaviors, e.g. when turning on Volume Streaming)
 
     if (tree.custom?.molstar_on_load_markdown_commands) {
         snapshot.onLoadMarkdownCommands = tree.custom.molstar_on_load_markdown_commands;
@@ -502,4 +504,5 @@ export type MolstarLoadingExtension<TExtensionContext> = LoadingExtension<Molsta
 export const BuiltinLoadingExtensions: MolstarLoadingExtension<any>[] = [
     NonCovalentInteractionsExtension,
     IsHiddenCustomStateExtension,
+    VolumeStreamingExtension,
 ];

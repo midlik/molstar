@@ -10,6 +10,11 @@ Note that since we don't clearly distinguish between a public and private interf
 - Fix clip-object transform due to missing axis normalization
 - Sequence alignment: Fix return type & improve scoring for unknown residues
 - Use PDB SEQRES block to show unresolved residues in Sequence toolbar
+- Canvas3D debug-helpers
+    - [Breaking] Move helpers to an extension as a PluginBehavior (params are no longer part of Canvas3D)
+    - Add helpers for clip-object, direct-volume, image, mesh
+- MolViewSpec
+  - Add `VolumeStreamingExtension` (`molstar_volume_streaming` custom property)
 
 ## [v5.7.0] - 2026-02-28
 - Text label improvements
