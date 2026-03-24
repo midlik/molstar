@@ -1,17 +1,16 @@
 #!/usr/bin/env node
 /**
- * Copyright (c) 2020-2022 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2020-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Josh McMenemy <josh.mcmenemy@gmail.com>
  * @author Alexander Rose <alexander.rose@weirdbyte.de>
+ * @author Paul Pillot <paul.pillot@tandemai.com>
  */
 
 import * as argparse from 'argparse';
 import * as path from 'path';
-import util from 'util';
 import fs from 'fs';
-require('util.promisify').shim();
-const writeFile = util.promisify(fs.writeFile);
+const writeFileAsync = fs.promises.writeFile;
 
 import { DatabaseCollection } from '../../mol-data/db';
 import { CCD_Schema } from '../../mol-io/reader/cif/schema/ccd';
@@ -32,7 +31,7 @@ function extractIonNames(ccd: DatabaseCollection<CCD_Schema>) {
 
 function writeIonNamesFile(filePath: string, ionNames: string[]) {
     const output = `/**
- * Copyright (c) 2020-2022 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2020-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * Code-generated ion names params file. Names extracted from CCD components.
  *
@@ -41,7 +40,7 @@ function writeIonNamesFile(filePath: string, ionNames: string[]) {
 
 export const IonNames = new Set(${JSON.stringify(ionNames).replace(/"/g, "'").replace(/,/g, ', ')});
 `;
-    writeFile(filePath, output);
+    writeFileAsync(filePath, output);
 }
 
 async function run(out: string, options = DefaultDataOptions) {

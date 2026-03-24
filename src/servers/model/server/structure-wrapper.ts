@@ -19,7 +19,6 @@ import { trajectoryFromMmCIF } from '../../../mol-model-formats/structure/mmcif'
 import { fetchRetry } from '../utils/fetch-retry';
 import { Task } from '../../../mol-task';
 
-require('util.promisify').shim();
 
 export enum StructureSourceType {
     File,
@@ -65,7 +64,7 @@ export async function createStructureWrapperFromJobEntry(entry: JobEntry, proper
 export const StructureCache = new Cache<StructureWrapper>(s => s.key, s => s.approximateSize);
 const perf = new PerformanceMonitor();
 
-const readFileAsync = util.promisify(fs.readFile);
+const readFileAsync = fs.promises.readFile;
 const unzipAsync = util.promisify<zlib.InputType, Buffer>(zlib.unzip);
 
 async function readFile(filename: string) {

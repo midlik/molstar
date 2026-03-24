@@ -1,8 +1,9 @@
 /**
- * Copyright (c) 2017 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2017-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author David Sehnal <david.sehnal@gmail.com>
  * @author Sebastian Bittrich <sebastian.bittrich@rcsb.org>
+ * @author Paul Pillot <paul.pillot@tandemai.com>
  */
 
 import { CIF, CifCategory, getCifFieldType, CifField, CifFile } from '../../mol-io/reader/cif';
@@ -22,7 +23,7 @@ function showProgress(p: Progress) {
     process.stdout.write(`\r${Progress.format(p)}`);
 }
 
-const readFileAsync = util.promisify(fs.readFile);
+const readFileAsync = fs.promises.readFile;
 const unzipAsync = util.promisify<zlib.InputType, Buffer>(zlib.unzip);
 
 async function readFile(ctx: RuntimeContext, filename: string): Promise<ReaderResult<CifFile>> {

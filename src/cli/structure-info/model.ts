@@ -7,7 +7,6 @@
  */
 
 import * as argparse from 'argparse';
-require('util.promisify').shim();
 
 import { CifFrame } from '../../mol-io/reader/cif';
 import { Model, Structure, StructureElement, Unit, StructureProperties, UnitRing, Trajectory } from '../../mol-model/structure';

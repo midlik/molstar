@@ -1,16 +1,15 @@
 #!/usr/bin/env node
 /**
- * Copyright (c) 2018-2020 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2018-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Alexander Rose <alexander.rose@weirdbyte.de>
+ * @author Paul Pillot <paul.pillot@tandemai.com>
  */
 
 import * as argparse from 'argparse';
-import * as util from 'util';
 import * as path from 'path';
 import * as fs from 'fs';
-require('util.promisify').shim();
-const writeFile = util.promisify(fs.writeFile);
+const writeFileAsync = fs.promises.writeFile;
 
 import { Database, Table, DatabaseCollection } from '../../mol-data/db';
 import { CCD_Schema } from '../../mol-io/reader/cif/schema/ccd';
@@ -250,14 +249,14 @@ async function run(out: string, binary = false, options = DefaultDataOptions, cc
     if (!fs.existsSync(path.dirname(out))) {
         fs.mkdirSync(path.dirname(out));
     }
-    writeFile(out, ccbCif);
+    writeFileAsync(out, ccbCif);
 
     if (!!ccaOut) {
         const ccaCif = getEncodedCif(CCA_TABLE_NAME, atoms, binary);
         if (!fs.existsSync(path.dirname(ccaOut))) {
             fs.mkdirSync(path.dirname(ccaOut));
         }
-        writeFile(ccaOut, ccaCif);
+        writeFileAsync(ccaOut, ccaCif);
     }
 }
 

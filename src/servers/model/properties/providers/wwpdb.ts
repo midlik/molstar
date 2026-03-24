@@ -1,11 +1,11 @@
 /**
- * Copyright (c) 2019-2020 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2019-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Alexander Rose <alexander.rose@weirdbyte.de>
+ * @author Paul Pillot <paul.pillot@tandemai.com>
  */
 
 import * as fs from 'fs';
-import * as util from 'util';
 import { AttachModelProperty } from '../../property-provider';
 import { CIF } from '../../../../mol-io/reader/cif';
 import { getParam } from '../../../common/util';
@@ -14,8 +14,7 @@ import { ComponentBond } from '../../../../mol-model-formats/structure/property/
 import { ComponentAtom } from '../../../../mol-model-formats/structure/property/atoms/chem_comp';
 import { CCD_Database, CCD_Schema } from '../../../../mol-io/reader/cif/schema/ccd';
 
-require('util.promisify').shim();
-const readFile = util.promisify(fs.readFile);
+const readFileAsync = fs.promises.readFile;
 
 export const wwPDB_chemCompBond: AttachModelProperty = async ({ model, params }) => {
     const table = await getChemCompBondTable(getBondTablePath(params));
@@ -25,7 +24,7 @@ export const wwPDB_chemCompBond: AttachModelProperty = async ({ model, params })
 };
 
 async function read(path: string) {
-    return path.endsWith('.bcif') ? new Uint8Array(await readFile(path)) : readFile(path, 'utf8');
+    return path.endsWith('.bcif') ? new Uint8Array(await readFileAsync(path)) : readFileAsync(path, 'utf8');
 }
 
 let chemCompBondTable: mmCIF_Database['chem_comp_bond'];

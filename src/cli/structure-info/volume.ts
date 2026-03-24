@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
- * Copyright (c) 2018-2025 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2018-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author David Sehnal <david.sehnal@gmail.com>
  * @author Alexander Rose <alexander.rose@weirdbyte.de>
+ * @author Paul Pillot <paul.pillot@tandemai.com>
  */
 
 import * as fs from 'fs';
 import * as argparse from 'argparse';
-import * as util from 'util';
 
 import { Volume } from '../../mol-model/volume';
 import { downloadCif } from './helpers';
@@ -20,8 +20,7 @@ import { createVolumeIsosurfaceMesh } from '../../mol-repr/volume/isosurface';
 import { Theme } from '../../mol-theme/theme';
 import { volumeFromDensityServerData, DscifFormat } from '../../mol-model-formats/volume/density-server';
 
-require('util.promisify').shim();
-const writeFileAsync = util.promisify(fs.writeFile);
+const writeFileAsync = fs.promises.writeFile;
 
 async function getVolume(url: string): Promise<Volume> {
     const cif = await downloadCif(url, true);
