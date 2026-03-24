@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2024 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2024-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Adam Midlik <midlik@gmail.com>
  */
@@ -80,7 +80,9 @@ function collectCellBoundingSpheres(out: Sphere3D[], plugin: PluginContext, cell
     return out;
 }
 
-/** Return a set of bounding spheres of a plugin state object. Return `undefined` if this plugin state object type does not define bounding spheres. */
+/** Return a set of bounding spheres of a plugin state object.
+ *  Return `[]` if this plugin state object type does define bounding spheres but this instance has no valid bounding spheres (e.g. empty structure).
+ *  Return `undefined` if this plugin state object type does not define bounding spheres. */
 function getStateObjectBoundingSpheres(plugin: PluginContext, cell: StateObjectCell | undefined): Sphere3D[] | undefined {
     const obj = cell?.obj;
     if (!obj) return undefined;
@@ -90,8 +92,9 @@ function getStateObjectBoundingSpheres(plugin: PluginContext, cell: StateObjectC
     }
     if (obj.data instanceof Structure) {
         const decorated = StateSelection.getDecorated<PluginStateObject.Molecule.Structure>(plugin.state.data, cell.transform.ref);
-        const data = decorated?.obj?.data ?? obj?.data;
-        const sphere = Loci.getBoundingSphere(Structure.Loci(data));
+        const structure = decorated?.obj?.data ?? obj?.data;
+        if (structure.isEmpty) return [];
+        const sphere = Loci.getBoundingSphere(Structure.Loci(structure));
         return sphere ? [sphere] : [];
     } else if (PluginStateObject.isRepresentation3D(obj)) {
         const out: Sphere3D[] = [];
