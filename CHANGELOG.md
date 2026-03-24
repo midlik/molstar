@@ -13,8 +13,11 @@ Note that since we don't clearly distinguish between a public and private interf
 - Canvas3D debug-helpers
     - [Breaking] Move helpers to an extension as a PluginBehavior (params are no longer part of Canvas3D)
     - Add helpers for clip-object, direct-volume, image, mesh
+- Fix StructureComponent node update throwing error when substructure empty
+- CSS: Avoid tooltip box flickering when hovering something under it
 - MolViewSpec
-  - Add `VolumeStreamingExtension` (`molstar_volume_streaming` custom property)
+    - Add `VolumeStreamingExtension` (`molstar_volume_streaming` custom property)
+    - Fix focusing empty selections
 
 ## [v5.7.0] - 2026-02-28
 - Text label improvements
