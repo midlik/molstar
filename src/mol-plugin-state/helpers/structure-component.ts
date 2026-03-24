@@ -113,6 +113,7 @@ export function updateStructureComponent(a: Structure, b: SO.Molecule.Structure,
                 return StateTransformer.UpdateResult.Recreate;
             }
             if (b.data.model === a.model) return StateTransformer.UpdateResult.Unchanged;
+            if (!b.data.model) return StateTransformer.UpdateResult.Unchanged; // .model can be undefined, when a substructure is empty -> doesn't need remapping
             if (!Model.areHierarchiesEqual(a.model, b.data.model)) return StateTransformer.UpdateResult.Recreate;
 
             b.data = b.data.remapModel(a.model);
