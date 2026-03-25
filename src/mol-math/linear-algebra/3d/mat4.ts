@@ -722,12 +722,11 @@ namespace Mat4 {
         const tangent1 = Vec3.cross(_v3pb, normal, tangent0);
         Vec3.normalize(tangent1, tangent1);
 
-        setAxes(out, normal, tangent0, tangent1);
+        fromBasis(out, tangent0, tangent1, normal);
 
         out[12] = point[0];
         out[13] = point[1];
         out[14] = point[2];
-        out[15] = 1;
         return out;
     }
 
