@@ -15,6 +15,9 @@ Note that since we don't clearly distinguish between a public and private interf
     - Add helpers for clip-object, direct-volume, image, mesh
 - MolViewSpec
   - Add `VolumeStreamingExtension` (`molstar_volume_streaming` custom property)
+- Volume slice visual
+    - Fix support for volume instances
+    - Fix plane mode: ensure normalized & correctly oriented
 
 ## [v5.7.0] - 2026-02-28
 - Text label improvements
