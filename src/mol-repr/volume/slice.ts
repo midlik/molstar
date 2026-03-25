@@ -414,10 +414,10 @@ async function createGridImage(ctx: VisualContext, volume: Volume, key: number, 
     const groupArray = new Uint8Array(width * height * 4);
     const valueArray = new Float32Array(width * height);
 
-    const mapping = {
+    const mapping: SampledImageMapping = {
         instance: new Int16Array(width * height),
         cell: new Uint32Array(width * height),
-        index: new Map<number, number>(),
+        index: new Map(),
     };
 
     const gridToCartn = Grid.getGridToCartesianTransform(volume.grid);
@@ -449,7 +449,7 @@ async function createGridImage(ctx: VisualContext, volume: Volume, key: number, 
                     if (pm) {
                         mapping.instance[i] = pm.instance;
                         mapping.cell[i] = pm.cell;
-                        mapping.index.set(cantorPairing(pm.instance, pm.cell), i);
+                        mapping.index.set(cantorPairing(pm.instance, pm.cell), [i]);
                     } else {
                         imageArray[i4] = 0;
                         imageArray[i4 + 1] = 0;
@@ -461,7 +461,7 @@ async function createGridImage(ctx: VisualContext, volume: Volume, key: number, 
                     const o = space.dataOffset(ix, iy, iz);
                     mapping.instance[i] = -1;
                     mapping.cell[i] = o;
-                    mapping.index.set(o, i);
+                    mapping.index.set(o, [i]);
                 }
 
                 i += 1;
