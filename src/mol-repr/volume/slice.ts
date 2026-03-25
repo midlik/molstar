@@ -343,8 +343,7 @@ async function createFrameImage(ctx: VisualContext, volume: Volume, key: number,
 async function createPlaneImage(ctx: VisualContext, volume: Volume, key: number, theme: Theme, props: SliceProps, image?: Image): Promise<Image> {
     const { plane: { point, normal }, isoValue } = props;
 
-    const m = Mat4.fromPlane(Mat4(), normal, point);
-
+    const nn = Vec3.normalize(Vec3(), normal);
     const gridToCartn = Grid.getGridToCartesianTransform(volume.grid);
     const cartnToGrid = Mat4.invert(Mat4(), gridToCartn);
     const [mx, my, mz] = volume.grid.cells.space.dimensions;
