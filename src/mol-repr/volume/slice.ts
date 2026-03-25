@@ -355,14 +355,23 @@ async function createPlaneImage(ctx: VisualContext, volume: Volume, key: number,
     const resolution = Math.max(a, b, c) / Math.max(mx, my, mz);
     const scaleFactor = 1 / resolution;
 
-    const s = Vec3.distance(Vec3.create(0, 0, 0), Vec3.create(a, b, c)) * Math.SQRT2;
-    const size = Vec3.set(Vec3(), s, s, s);
+    const s = Vec3.distance(Vec3.create(0, 0, 0), Vec3.create(a, b, c));
 
-    Mat4.mul(m, m, Mat4.rotY90);
+    // Get center on plane
+    const center = Vec3.create(a / 2, b / 2, c / 2);
+    Vec3.transformMat4(center, center, gridToCartn);
+    const toCenter = Vec3.sub(Vec3(), center, point);
+    const distToPlane = Vec3.dot(toCenter, nn);
+    const centerOnPlane = Vec3.scaleAndAdd(Vec3(), center, nn, -distToPlane);
+
+    // Center image on volume (within plane)
+    const m = Mat4.fromPlane(Mat4(), nn, centerOnPlane);
+
+    const size = Vec3.set(Vec3(), s, s, s);
     Mat4.scale(m, m, size);
 
-    const width = Math.floor(size[1] * scaleFactor);
-    const height = Math.floor(size[0] * scaleFactor);
+    const width = Math.floor(s * scaleFactor);
+    const height = Math.floor(s * scaleFactor);
 
     const trim: Image.Trim = {
         type: 3,
