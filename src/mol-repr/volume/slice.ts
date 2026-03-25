@@ -184,6 +184,12 @@ type SamplingInfo = {
     height: number
 };
 
+type SampledImageMapping = {
+    instance: Int16Array
+    cell: Uint32Array
+    index: Map<number, number[]>
+};
+
 function getSampledImage(volume: Volume, theme: Theme, info: SamplingInfo, isoValue: Volume.IsoValue, trim: Image.Trim, image?: Image): Image {
     const { m, width, height } = info;
 
@@ -205,10 +211,10 @@ function getSampledImage(volume: Volume, theme: Theme, info: SamplingInfo, isoVa
     const groupArray = new Uint8Array(width * height * 4);
     const valueArray = new Float32Array(width * height);
 
-    const mapping = {
+    const mapping: SampledImageMapping = {
         instance: new Int16Array(width * height),
         cell: new Uint32Array(width * height),
-        index: new Map<number, number>(),
+        index: new Map(),
     };
 
     const gridCoords = Vec3();
@@ -255,7 +261,12 @@ function getSampledImage(volume: Volume, theme: Theme, info: SamplingInfo, isoVa
                     if (pm) {
                         mapping.instance[i] = pm.instance;
                         mapping.cell[i] = pm.cell;
-                        mapping.index.set(cantorPairing(pm.instance, pm.cell), i);
+                        const key = cantorPairing(pm.instance, pm.cell);
+                        if (mapping.index.has(key)) {
+                            mapping.index.get(key)!.push(i);
+                        } else {
+                            mapping.index.set(key, [i]);
+                        }
                     } else {
                         imageArray[i4] = 0;
                         imageArray[i4 + 1] = 0;
@@ -267,7 +278,11 @@ function getSampledImage(volume: Volume, theme: Theme, info: SamplingInfo, isoVa
                     const o = space.dataOffset(ix, iy, iz);
                     mapping.instance[i] = -1;
                     mapping.cell[i] = o;
-                    mapping.index.set(o, i);
+                    if (mapping.index.has(o)) {
+                        mapping.index.get(o)!.push(i);
+                    } else {
+                        mapping.index.set(o, [i]);
+                    }
                 }
             }
 
@@ -531,7 +546,7 @@ function getLoci(volume: Volume, props: SliceProps) {
 function getSliceLoci(pickingId: PickingId, volume: Volume, _key: number, props: SliceProps, id: number, image: Image) {
     let { objectId, groupId, instanceId } = pickingId;
     if (id === objectId) {
-        const mapping = image.meta.mapping as any;
+        const mapping = image.meta.mapping as SampledImageMapping;
         if (mapping) {
             const instanceIndex = mapping.instance[groupId];
             if (instanceIndex >= 0) instanceId = instanceIndex;
@@ -553,32 +568,34 @@ function getSliceLoci(pickingId: PickingId, volume: Volume, _key: number, props:
 }
 
 function eachSlice(loci: Loci, volume: Volume, key: number, props: SliceProps, apply: (interval: Interval) => boolean, image: Image) {
-    const mapping = image.meta.mapping as any;
+    const mapping = image.meta.mapping as SampledImageMapping;
     if (mapping) {
         const groupCount = mapping.cell.length;
         const cellCount = volume.grid.cells.data.length;
         const isPeriodic = Volume.isPeriodic(volume);
 
-        const getIndex = (i: number,) => {
-            const instanceIndex = Math.floor(i / cellCount);
-            const groupIndex = i % cellCount;
-            return isPeriodic
-                ? mapping.index.get(cantorPairing(instanceIndex, groupIndex))
-                : mapping.index.get(groupIndex) + instanceIndex * groupCount;
-        };
+        const getIndices = isPeriodic
+            ? (instanceIndex: number, groupIndex: number) => {
+                return mapping.index.get(cantorPairing(instanceIndex, groupIndex));
+            }
+            : (instanceIndex: number, groupIndex: number) => {
+                const indices = mapping.index.get(groupIndex);
+                return indices !== undefined ? indices.map(idx => idx + instanceIndex * groupCount) : undefined;
+            };
 
         return eachVolumeLoci(loci, volume, undefined, (interval) => {
             let changed = false;
             for (let i = Interval.start(interval), il = Interval.end(interval); i < il; ++i) {
-                const v = getIndex(i);
-                if (v === undefined) continue;
-                if (apply(Interval.ofSingleton(v))) changed = true;
+                const instanceIndex = Math.floor(i / cellCount);
+                const groupIndex = i % cellCount;
+                const vs = getIndices(instanceIndex, groupIndex);
+                if (vs !== undefined) {
+                    for (const v of vs) {
+                        if (apply(Interval.ofSingleton(v))) changed = true;
+                    }
+                }
             }
             return changed;
-            // const start = getIndex(Interval.min(interval));
-            // const end = getIndex(Interval.max(interval));
-            // console.log(Interval.min(interval), Interval.max(interval), {start, end });
-            // return apply(Interval.ofRange(start, end));
         });
     } else {
         return eachVolumeLoci(loci, volume, undefined, apply);
