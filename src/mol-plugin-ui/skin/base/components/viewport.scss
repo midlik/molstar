@@ -119,6 +119,13 @@
         max-width: 95%;
 
         z-index: 10000;
+
+        // Avoid tooltip box flickering when hovering something under it:
+        pointer-events: none;
+
+        .msp-toast-container {
+            pointer-events: initial;
+        }
     }
 
     .msp-highlight-info {
