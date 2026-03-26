@@ -159,7 +159,7 @@ function getFrame(volume: Volume, props: SliceProps) {
 
     if (mode === 'frame') {
         const r = Vec3.distance(min, max);
-        const s = Vec3.distance(min, max) * Math.SQRT2;
+        const s = Vec3.distance(min, max);
         Vec3.set(size, s, s, r);
     }
 
