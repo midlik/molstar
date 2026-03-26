@@ -12,7 +12,6 @@ import * as fs from 'fs';
 import * as zlib from 'zlib';
 import { convert } from './converter';
 
-require('util.promisify').shim();
 
 async function process(srcPath: string, outPath: string, configPath?: string, filterPath?: string) {
     const config = configPath ? JSON.parse(fs.readFileSync(configPath, 'utf8')) : void 0;

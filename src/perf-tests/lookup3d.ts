@@ -1,4 +1,3 @@
-import * as util from 'util';
 import * as fs from 'fs';
 import { CIF } from '../mol-io/reader/cif';
 
@@ -10,8 +9,7 @@ import { OrderedSet } from '../mol-data/int';
 import { trajectoryFromMmCIF, MmcifFormat } from '../mol-model-formats/structure/mmcif';
 import { getBoundary } from '../mol-math/geometry/boundary';
 
-require('util.promisify').shim();
-const readFileAsync = util.promisify(fs.readFile);
+const readFileAsync = fs.promises.readFile;
 
 async function readData(path: string) {
     if (path.match(/\.bcif$/)) {

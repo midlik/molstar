@@ -1,17 +1,16 @@
 /**
- * Copyright (c) 2018-2020 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2018-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Alexander Rose <alexander.rose@weirdbyte.de>
+ * @author Paul Pillot <paul.pillot@tandemai.com>
  */
 
-import * as util from 'util';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as zlib from 'zlib';
 import fetch from 'node-fetch';
-require('util.promisify').shim();
-const readFile = util.promisify(fs.readFile);
-const writeFile = util.promisify(fs.writeFile);
+const readFileAsync = fs.promises.readFile;
+const writeFileAsync = fs.promises.writeFile;
 
 import { Progress } from '../../mol-task';
 import { Database } from '../../mol-data/db';
@@ -27,9 +26,9 @@ export async function ensureAvailable(path: string, url: string, forceDownload =
             fs.mkdirSync(DATA_DIR);
         }
         if (url.endsWith('.gz')) {
-            await writeFile(path, zlib.gunzipSync(await data.buffer()));
+            await writeFileAsync(path, zlib.gunzipSync(await data.buffer()));
         } else {
-            await writeFile(path, await data.text());
+            await writeFileAsync(path, await data.text());
         }
         console.log(`done downloading ${url}`);
     }
@@ -41,7 +40,7 @@ export async function ensureDataAvailable(options: DataOptions) {
 }
 
 export async function readFileAsCollection<S extends Database.Schema>(path: string, schema: S) {
-    const parsed = await parseCif(await readFile(path, 'utf8'));
+    const parsed = await parseCif(await readFileAsync(path, 'utf8'));
     return CIF.toDatabaseCollection(schema, parsed.result);
 }
 

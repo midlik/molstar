@@ -1,18 +1,17 @@
 /**
- * Copyright (c) 2018 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2018-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author David Sehnal <david.sehnal@gmail.com>
+ * @author Paul Pillot <paul.pillot@tandemai.com>
  */
 
-import * as util from 'util';
 import * as fs from 'fs';
 import fetch from 'node-fetch';
-require('util.promisify').shim();
 
 import { CIF } from '../../mol-io/reader/cif';
 import { Progress } from '../../mol-task';
 
-const readFileAsync = util.promisify(fs.readFile);
+const readFileAsync = fs.promises.readFile;
 
 async function readFile(path: string) {
     if (path.match(/\.bcif$/)) {

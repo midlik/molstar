@@ -1,12 +1,12 @@
 /**
- * Copyright (c) 2017 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2017-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author David Sehnal <david.sehnal@gmail.com>
+ * @author Paul Pillot <paul.pillot@tandemai.com>
  */
 
 import * as B from 'benchmark';
 
-import * as util from 'util';
 import * as fs from 'fs';
 import fetch from 'node-fetch';
 import { CIF } from '../mol-io/reader/cif';
@@ -20,9 +20,8 @@ import { trajectoryFromMmCIF, MmcifFormat } from '../mol-model-formats/structure
 // import { printUnits } from '../apps/structure-info/model';
 // import { EquivalenceClasses } from '../mol-data/util';
 
-require('util.promisify').shim();
-const readFileAsync = util.promisify(fs.readFile);
-const writeFileAsync = util.promisify(fs.writeFile);
+const readFileAsync = fs.promises.readFile;
+const writeFileAsync = fs.promises.writeFile;
 
 async function readData(path: string) {
     if (path.match(/\.bcif$/)) {
