@@ -80,10 +80,18 @@ export interface Model extends Readonly<{
     customProperties: CustomProperties,
 
     /**
+     * Properties independent of coordinates or other dynamic aspects.
+     *
      * Not to be accessed directly, each custom property descriptor
      * defines property accessors that use this field to store the data.
      */
     _staticPropertyData: { [name: string]: any },
+    /**
+     * Properties that depend on coordinates or other dynamic aspects.
+     *
+     * Not to be accessed directly, each custom property descriptor
+     * defines property accessors that use this field to store the data.
+     */
     _dynamicPropertyData: { [name: string]: any },
 
     coarseHierarchy: CoarseHierarchy,
@@ -113,9 +121,6 @@ export namespace Model {
                 modelNum: i,
                 atomicConformation: getAtomicConformationFromFrame(model, f),
                 // TODO: add support for supplying sphere and gaussian coordinates in addition to atomic coordinates?
-                // coarseConformation: coarse.conformation,
-                customProperties: new CustomProperties(),
-                _staticPropertyData: Object.create(null),
                 _dynamicPropertyData: Object.create(null)
             };
 
