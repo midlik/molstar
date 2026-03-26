@@ -15,6 +15,9 @@ Note that since we don't clearly distinguish between a public and private interf
     - Add helpers for clip-object, direct-volume, image, mesh
 - Fix StructureComponent node update throwing error when substructure empty
 - CSS: Avoid tooltip box flickering when hovering something under it
+- Volume slice visual
+    - Fix support for volume instances
+    - Fix plane mode: ensure normalized & correctly oriented
 - MolViewSpec
     - Add `VolumeStreamingExtension` (`molstar_volume_streaming` custom property)
     - Fix focusing empty selections
