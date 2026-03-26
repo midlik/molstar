@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2017-2025 Mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2017-2026 Mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author David Sehnal <david.sehnal@gmail.com>
  * @author Alexander Rose <alexander.rose@weirdbyte.de>
@@ -213,11 +213,14 @@ function findBonds(unit: Unit.Atomic, props: BondComputationProps): IntraUnitBon
         lastResidue = raI;
 
         const aeI = getElementIdx(elemA);
-        const atomIdA = label_atom_id.value(aI);
+        const isHa = isHydrogen(aeI);
+        let atomIdA = label_atom_id.value(aI);
+        if (isHa && atomIdA.startsWith('D') && compId !== 'DOD') {
+            atomIdA = 'H' + atomIdA.substring(1);
+        }
         const componentPairs = componentMap ? componentMap.get(atomIdA) : void 0;
 
         const { indices, count, squaredDistances } = query3d.find(x[aI], y[aI], z[aI], maxRadius);
-        const isHa = isHydrogen(aeI);
         const thresholdA = getElementThreshold(aeI);
         const altA = label_alt_id.value(aI);
         const metalA = MetalsSet.has(aeI);
@@ -248,7 +251,11 @@ function findBonds(unit: Unit.Atomic, props: BondComputationProps): IntraUnitBon
             const rbI = residueIndex[bI];
             // handle "component dictionary" bonds.
             if (raI === rbI && componentPairs) {
-                const e = componentPairs.get(label_atom_id.value(bI)!);
+                let atomIdB = label_atom_id.value(bI)!;
+                if (isHb && atomIdB.startsWith('D') && compId !== 'DOD') {
+                    atomIdB = 'H' + atomIdB.substring(1);
+                }
+                const e = componentPairs.get(atomIdB);
                 if (e) {
                     atomA[atomA.length] = _aI;
                     atomB[atomB.length] = _bI;
@@ -284,7 +291,7 @@ function findBonds(unit: Unit.Atomic, props: BondComputationProps): IntraUnitBon
             if (flag) {
                 atomA[atomA.length] = _aI;
                 atomB[atomB.length] = _bI;
-                order[order.length] = getIntraBondOrderFromTable(compId, atomIdA, label_atom_id.value(bI));
+                order[order.length] = getIntraBondOrderFromTable(compId, label_atom_id.value(aI), label_atom_id.value(bI));
                 flags[flags.length] = (isMetal ? BondType.Flag.MetallicCoordination : BondType.Flag.Covalent) | BondType.Flag.Computed;
                 key[key.length] = -1;
 

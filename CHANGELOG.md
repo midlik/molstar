@@ -22,6 +22,7 @@ Note that since we don't clearly distinguish between a public and private interf
 - MolViewSpec
     - Add `VolumeStreamingExtension` (`molstar_volume_streaming` custom property)
     - Fix focusing empty selections
+- Handle CCD bonds with Deuterium atoms
 
 ## [v5.7.0] - 2026-02-28
 - Text label improvements
