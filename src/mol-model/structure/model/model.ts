@@ -188,14 +188,14 @@ export namespace Model {
     const AtomicRadiiProp = '__AtomicRadii__';
     /** Get array of atomic radii for all atoms in the model (cached). */
     export function getAtomicRadii(model: Model): Float32Array {
-        if (model._dynamicPropertyData[AtomicRadiiProp]) return model._dynamicPropertyData[AtomicRadiiProp];
+        if (model._staticPropertyData[AtomicRadiiProp]) return model._staticPropertyData[AtomicRadiiProp];
         const nAtoms = model.atomicHierarchy.atoms._rowCount;
         const type_symbol = model.atomicHierarchy.atoms.type_symbol.value;
         const radii = new Float32Array(nAtoms);
         for (let i = 0; i < nAtoms; i++) {
             radii[i] = VdwRadius(type_symbol(i));
         }
-        model._dynamicPropertyData[AtomicRadiiProp] = radii;
+        model._staticPropertyData[AtomicRadiiProp] = radii;
         return radii;
     }
 
