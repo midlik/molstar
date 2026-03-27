@@ -155,7 +155,7 @@ function findBonds(unit: Unit.Atomic, props: BondComputationProps): IntraUnitBon
     const key: number[] = [];
 
     let lastResidue = -1;
-    let componentMap: Map<string, Map<string, { flags: number, order: number, key: number }>> | undefined = void 0;
+    let componentEntry: ComponentBond.Entry | undefined = void 0;
 
     let isWatery = true, isDictionaryBased = true, isSequenced = true;
 
@@ -202,23 +202,20 @@ function findBonds(unit: Unit.Atomic, props: BondComputationProps): IntraUnitBon
                 const entitySeq = byEntityKey[index.getEntityFromChain(chainIndex[aI])];
                 if (entitySeq && entitySeq.sequence.microHet.has(seqIdA)) {
                     // compute for sequence positions with micro-heterogeneity
-                    componentMap = void 0;
+                    componentEntry = void 0;
                 } else {
-                    componentMap = component.entries.get(compId)!.map;
+                    componentEntry = component.entries.get(compId)!;
                 }
             } else {
-                componentMap = void 0;
+                componentEntry = void 0;
             }
         }
         lastResidue = raI;
 
         const aeI = getElementIdx(elemA);
         const isHa = isHydrogen(aeI);
-        let atomIdA = label_atom_id.value(aI);
-        if (isHa && atomIdA.startsWith('D') && compId !== 'DOD') {
-            atomIdA = 'H' + atomIdA.substring(1);
-        }
-        const componentPairs = componentMap ? componentMap.get(atomIdA) : void 0;
+        const atomIdA = label_atom_id.value(aI);
+        const componentPairs = componentEntry ? componentEntry.get(atomIdA, isHa) : void 0;
 
         const { indices, count, squaredDistances } = query3d.find(x[aI], y[aI], z[aI], maxRadius);
         const thresholdA = getElementThreshold(aeI);
@@ -251,11 +248,8 @@ function findBonds(unit: Unit.Atomic, props: BondComputationProps): IntraUnitBon
             const rbI = residueIndex[bI];
             // handle "component dictionary" bonds.
             if (raI === rbI && componentPairs) {
-                let atomIdB = label_atom_id.value(bI)!;
-                if (isHb && atomIdB.startsWith('D') && compId !== 'DOD') {
-                    atomIdB = 'H' + atomIdB.substring(1);
-                }
-                const e = componentPairs.get(atomIdB);
+                const atomIdB = label_atom_id.value(bI)!;
+                const e = componentPairs.get(atomIdB, isHb);
                 if (e) {
                     atomA[atomA.length] = _aI;
                     atomB[atomB.length] = _bI;
@@ -291,7 +285,7 @@ function findBonds(unit: Unit.Atomic, props: BondComputationProps): IntraUnitBon
             if (flag) {
                 atomA[atomA.length] = _aI;
                 atomB[atomB.length] = _bI;
-                order[order.length] = getIntraBondOrderFromTable(compId, label_atom_id.value(aI), label_atom_id.value(bI));
+                order[order.length] = getIntraBondOrderFromTable(compId, atomIdA, label_atom_id.value(bI));
                 flags[flags.length] = (isMetal ? BondType.Flag.MetallicCoordination : BondType.Flag.Covalent) | BondType.Flag.Computed;
                 key[key.length] = -1;
 
