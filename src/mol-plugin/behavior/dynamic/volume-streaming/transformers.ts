@@ -18,6 +18,7 @@ import { VolumeRepresentationRegistry } from '../../../../mol-repr/volume/regist
 import { StateAction, StateObject, StateTransformer } from '../../../../mol-state';
 import { RuntimeContext, Task } from '../../../../mol-task';
 import { Theme } from '../../../../mol-theme/theme';
+import { deepEqual } from '../../../../mol-util';
 import { ParamDefinition as PD } from '../../../../mol-util/param-definition';
 import { urlCombine } from '../../../../mol-util/url';
 import { PluginConfig } from '../../../config';
@@ -216,7 +217,11 @@ const CreateVolumeStreamingInfo = PluginStateTransform.BuiltIn({
             defaultChannelParams: params.defaultChannelParams,
         };
         return new VolumeServerInfo(data, { label: 'Volume Server', description: `${entries.map(e => e.dataId).join(', ')}` });
-    })
+    }),
+    update({ a, b, oldParams, newParams }) {
+        if (a.data === b.data.structure && deepEqual(oldParams, newParams)) return StateTransformer.UpdateResult.Unchanged;
+        return StateTransformer.UpdateResult.Recreate;
+    },
 });
 
 export { CreateVolumeStreamingBehavior };
