@@ -248,8 +248,7 @@ function findBonds(unit: Unit.Atomic, props: BondComputationProps): IntraUnitBon
             const rbI = residueIndex[bI];
             // handle "component dictionary" bonds.
             if (raI === rbI && componentPairs) {
-                const atomIdB = label_atom_id.value(bI)!;
-                const e = componentPairs.get(atomIdB, isHb);
+                const e = componentPairs.get(label_atom_id.value(bI), isHb);
                 if (e) {
                     atomA[atomA.length] = _aI;
                     atomB[atomB.length] = _bI;
