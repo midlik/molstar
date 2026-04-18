@@ -5,6 +5,10 @@ Note that since we don't clearly distinguish between a public and private interf
 
 ## [Unreleased]
 - Add 8K UHD option to `ViewportScreenshotHelper`
+- Handle MRC files with empty length header fields
+
+## [v5.8.1] - 2026-04-03
+- Fix edge case when `PluginSpec.animations` is empty
 
 ## [v5.8.0] - 2026-04-03
 - Dependencies: remove `utils.promisify`, `node-fetch` (#1797)
