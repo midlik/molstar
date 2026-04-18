@@ -4,7 +4,16 @@ All notable changes to this project will be documented in this file, following t
 Note that since we don't clearly distinguish between a public and private interfaces there will be changes in non-major versions that are potentially breaking. If we make breaking changes to less used interfaces we will highlight it in here.
 
 ## [Unreleased]
-- Dependencies: remove `utils.promisify` (#1797)
+- Add 8K UHD option to `ViewportScreenshotHelper`
+- Handle MRC files with empty length header fields
+- Handle CCD bonds with Deuterium atoms
+- [Breaking] ComponentBond.Entry.map now returns ComponentBond.Pairs
+
+## [v5.8.1] - 2026-04-03
+- Fix edge case when `PluginSpec.animations` is empty
+
+## [v5.8.0] - 2026-04-03
+- Dependencies: remove `utils.promisify`, `node-fetch` (#1797)
 - Fix circular dependency which causes crash in bundlers (#1791)
 - Add `putty` as a mol-view-spec representation.
 - Fix detecting sidechain-only structures as coarse-grained (#1420)
@@ -22,8 +31,7 @@ Note that since we don't clearly distinguish between a public and private interf
 - MolViewSpec
     - Add `VolumeStreamingExtension` (`molstar_volume_streaming` custom property)
     - Fix focusing empty selections
-- Handle CCD bonds with Deuterium atoms
-- [Breaking] ComponentBond.Entry.map now returns ComponentBond.Pairs
+- Avoid re-calculating static model properties for trajectories
 
 ## [v5.7.0] - 2026-02-28
 - Text label improvements
