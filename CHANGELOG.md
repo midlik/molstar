@@ -6,6 +6,8 @@ Note that since we don't clearly distinguish between a public and private interf
 ## [Unreleased]
 - Add 8K UHD option to `ViewportScreenshotHelper`
 - Handle MRC files with empty length header fields
+- Handle CCD bonds with Deuterium atoms
+- [Breaking] ComponentBond.Entry.map now returns ComponentBond.Pairs
 
 ## [v5.8.1] - 2026-04-03
 - Fix edge case when `PluginSpec.animations` is empty
