@@ -595,7 +595,7 @@ export function applySliceObjectLoci(loci: Volume.Loci, volume: Volume, groupCou
     return changed;
 }
 
-export function applySlicePixelIntervals(indices: number[] | undefined, offset: number, apply: (interval: Interval) => boolean) {
+export function applySliceGroupIntervals(indices: number[] | undefined, offset: number, apply: (interval: Interval) => boolean) {
     if (!indices || indices.length === 0) return false;
 
     let changed = false;
@@ -634,12 +634,12 @@ function eachSlice(loci: Loci, volume: Volume, key: number, props: SliceProps, a
                 const instanceIndex = Math.floor(i / cellCount);
                 const groupIndex = i % cellCount;
                 if (isPeriodic) {
-                    if (applySlicePixelIntervals(mapping.index.get(cantorPairing(instanceIndex, groupIndex)), 0, apply)) {
+                    if (applySliceGroupIntervals(mapping.index.get(cantorPairing(instanceIndex, groupIndex)), 0, apply)) {
                         changed = true;
                     }
                 } else {
                     const offset = instanceIndex * groupCount;
-                    if (applySlicePixelIntervals(mapping.index.get(groupIndex), offset, apply)) {
+                    if (applySliceGroupIntervals(mapping.index.get(groupIndex), offset, apply)) {
                         changed = true;
                     }
                 }

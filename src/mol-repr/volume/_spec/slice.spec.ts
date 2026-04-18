@@ -8,7 +8,7 @@ import { OrderedSet, Interval } from '../../../mol-data/int';
 import { Grid, Volume } from '../../../mol-model/volume';
 import { Mat4 } from '../../../mol-math/linear-algebra';
 import { CustomProperties } from '../../../mol-model/custom-property';
-import { applySliceObjectLoci, applySlicePixelIntervals } from '../slice';
+import { applySliceObjectLoci, applySliceGroupIntervals } from '../slice';
 
 function createTestVolume(instanceCount: number, periodic = false, stats: Grid['stats'] = Grid.One.stats): Volume {
     return {
@@ -24,7 +24,7 @@ function createTestVolume(instanceCount: number, periodic = false, stats: Grid['
 describe('slice helpers', () => {
     it('applies object loci as displayed plane intervals for contiguous instances', () => {
         const volume = createTestVolume(4);
-        const loci = Volume.Loci(volume, OrderedSet.ofBounds(1, 3));
+        const loci = Volume.Loci(volume, OrderedSet.ofBounds(1, 3) as OrderedSet<Volume.InstanceIndex>);
         const intervals: Array<[number, number]> = [];
 
         const changed = applySliceObjectLoci(loci, volume, 5, interval => {
@@ -38,7 +38,7 @@ describe('slice helpers', () => {
 
     it('applies object loci per displayed instance for discontiguous selections', () => {
         const volume = createTestVolume(4);
-        const loci = Volume.Loci(volume, OrderedSet.ofSortedArray([0, 2] as const));
+        const loci = Volume.Loci(volume, OrderedSet.ofSortedArray([0, 2]) as OrderedSet<Volume.InstanceIndex>);
         const intervals: Array<[number, number]> = [];
 
         const changed = applySliceObjectLoci(loci, volume, 5, interval => {
@@ -52,7 +52,7 @@ describe('slice helpers', () => {
 
     it('collapses periodic object loci to the single displayed slice plane', () => {
         const volume = createTestVolume(4, true);
-        const loci = Volume.Loci(volume, OrderedSet.ofBounds(1, 3));
+        const loci = Volume.Loci(volume, OrderedSet.ofBounds(1, 3) as OrderedSet<Volume.InstanceIndex>);
         const intervals: Array<[number, number]> = [];
 
         const changed = applySliceObjectLoci(loci, volume, 6, interval => {
@@ -67,7 +67,7 @@ describe('slice helpers', () => {
     it('batches contiguous slice pixels into minimal intervals', () => {
         const intervals: Array<[number, number]> = [];
 
-        const changed = applySlicePixelIntervals([1, 2, 3, 7, 8, 10], 5, interval => {
+        const changed = applySliceGroupIntervals([1, 2, 3, 7, 8, 10], 5, interval => {
             intervals.push([Interval.start(interval), Interval.end(interval)]);
             return true;
         });
