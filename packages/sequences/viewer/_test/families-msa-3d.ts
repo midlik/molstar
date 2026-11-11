@@ -54,9 +54,6 @@ export function familyFromFasta(fasta: string, heightRows: number, o: { columns?
       value: {
         row: Array.from({ length: n }, (_, k) => k),
         length: Array.from({ length: n }, (_, k) => 28 + (k % 3)),
-        identity: Array.from({ length: n }, (_, k) => ((k * 37) % 100) / 100),
-        species: Array.from({ length: n }, (_, k) => `Species ${k % 7}`),
-        clade: Array.from({ length: n }, (_, k) => `clade ${k % 4}`),
       },
     })
     : null;
@@ -65,9 +62,6 @@ export function familyFromFasta(fasta: string, heightRows: number, o: { columns?
       ? {
         data_columns: [
           { data: meta, field: 'length', label: 'Len', type: 'number' },
-          { data: meta, field: 'identity', label: 'Id.', type: 'fraction' },
-          { data: meta, field: 'species', label: 'Species', type: 'text' },
-          { data: meta, field: 'clade', label: 'Clade', type: 'category' },
         ],
       }
       : {},

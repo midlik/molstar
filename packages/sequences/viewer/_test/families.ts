@@ -13,7 +13,6 @@
 
 import { createSeqViewSpec } from '@molstar/seq-core/builder';
 import type { SeqViewSpecDoc } from '@molstar/seq-core/format';
-import { Fasta } from '@molstar/seq-core/model';
 
 const SEEDS = [
   'WYFGKITRRESERLLLNAENPRGTFLVRES',
