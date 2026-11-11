@@ -13,7 +13,7 @@
 import { button, type DomPart, type RowProps as DomRowProps, setAttr } from '@molstar/seq-viewer/dom';
 import type { RowProps } from '@molstar/seq-viewer/react';
 import type { Meta, StoryObj } from './support/seqstar-story.js';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { familyFromFasta } from '../../../viewer/_test/families-msa-3d.js';
 import fastaAlignment from '../../../core/_test/fixtures/3SN6_align-fixed.fasta?raw';
 import { PrismPage } from './support/seqstar-prism.js';
@@ -37,10 +37,14 @@ type Story = StoryObj<Args>;
 
 const TREE_FAMILY = familyFromFasta(fastaAlignment, 16, { columns: true, sites: false });
 
-type RowToggleCallback = (on: boolean, dataRow: number) => void;
+type RowToggleCallback = (on: boolean, dataRow: number) => boolean | Promise<boolean>;
+
+const LoadedStructureLabelsContext = createContext<readonly string[]>([]);
 
 function RowToggle({ dataRow, clickCallback }: RowProps & { clickCallback: RowToggleCallback }) {
-  const [on, setOn] = useState(false);
+  const loadedStructureLabels = useContext(LoadedStructureLabelsContext);
+  const [busy, setBusy] = useState(false);
+  const on = loadedStructureLabels.includes(TREE_FAMILY.labels[dataRow]);
   return (
     <Tooltip content={`Show row ${dataRow + 1} in 3D`}>
       <button
@@ -48,10 +52,10 @@ function RowToggle({ dataRow, clickCallback }: RowProps & { clickCallback: RowTo
         className={s.rowToggle}
         aria-pressed={on}
         aria-label={`Show row ${dataRow + 1} in 3D`}
+        disabled={busy}
         onClick={() => {
-          const newOn = !on;
-          setOn(newOn);
-          clickCallback(newOn, dataRow);
+          setBusy(true);
+          void Promise.resolve(clickCallback(!on, dataRow)).finally(() => setBusy(false));
         }}
       >
         3D
@@ -122,7 +126,7 @@ function RowControlsMolstarView({ args }: { args: Args }) {
   const [loading, setLoading] = useState(false);
   const [loadedStructureLabels, setLoadedStructureLabels] = useState<string[]>([]);
   const loadedStructureLabelsRef = useRef<string[]>([]);
-  const rowToggleCallbackRef = useRef<RowToggleCallback>(() => { });
+  const rowToggleCallbackRef = useRef<RowToggleCallback>(() => false);
   const rowUi = useMemo(() => ROW_UI_WITH_CALLBACK((on, iRow) => rowToggleCallbackRef.current(on, iRow)), []);
 
   useEffect(() => {
@@ -151,12 +155,12 @@ function RowControlsMolstarView({ args }: { args: Args }) {
   }, []);
 
   const loadStructure = async (label: string) => {
-    if (!plugin || loading) return;
+    if (!plugin || loading) return false;
     setLoading(true);
     try {
       if (loadedStructureLabelsRef.current.includes(label)) {
         setStatus(`Already loaded ${label}.`);
-        return;
+        return false;
       }
       const nextLabels = [...loadedStructureLabelsRef.current, label];
       setStatus(`Loading ${label}…`);
@@ -164,20 +168,22 @@ function RowControlsMolstarView({ args }: { args: Args }) {
       const structure = state ? await showMvs(plugin, state) : null;
       if (!structure) {
         setStatus('No structure was loaded.');
-        return;
+        return false;
       }
       loadedStructureLabelsRef.current = nextLabels;
       setLoadedStructureLabels(nextLabels);
       setStatus(`Loaded ${label}.`);
+      return true;
     } catch (e) {
       setStatus(`Could not load structure: ${e instanceof Error ? e.message : String(e)}`);
+      return false;
     } finally {
       setLoading(false);
     }
   };
 
   const unloadStructure = async (label: string) => {
-    if (!plugin || loading || !loadedStructureLabelsRef.current.includes(label)) return;
+    if (!plugin || loading || !loadedStructureLabelsRef.current.includes(label)) return false;
     setLoading(true);
     setStatus(`Unloading ${label}…`);
     try {
@@ -192,8 +198,10 @@ function RowControlsMolstarView({ args }: { args: Args }) {
       loadedStructureLabelsRef.current = nextLabels;
       setLoadedStructureLabels(nextLabels);
       setStatus(nextLabels.length ? `Unloaded ${label}.` : 'Ready. No structure is loaded.');
+      return true;
     } catch (e) {
       setStatus(`Could not unload structure: ${e instanceof Error ? e.message : String(e)}`);
+      return false;
     } finally {
       setLoading(false);
     }
@@ -201,8 +209,13 @@ function RowControlsMolstarView({ args }: { args: Args }) {
 
   rowToggleCallbackRef.current = (on, iRow) => {
     const rowLabel = TREE_FAMILY.labels[iRow];
-    void (on ? loadStructure(rowLabel) : unloadStructure(rowLabel));
+    if (on) {
+      return loadStructure(rowLabel);
+    } else {
+      return unloadStructure(rowLabel);
+    }
   };
+  // const f=() => void loadStructure(label)
 
   return (
     <PrismPage
@@ -215,18 +228,20 @@ function RowControlsMolstarView({ args }: { args: Args }) {
         </>
       }
     >
-      <ViewerCard
-        doc={TREE_FAMILY.document}
-        label="The 3SN6 alignment, a control beside each row"
-        ui={rowUi}
-        domSlots={ROW_DOM}
-        options={{
-          navigator: args.navigator,
-          rowsColor: args.rowsColor,
-          ui: args.ui,
-          render: { controlWidth: 40, headerWidth: 230 },
-        }}
-      />
+      <LoadedStructureLabelsContext.Provider value={loadedStructureLabels}>
+        <ViewerCard
+          doc={TREE_FAMILY.document}
+          label="The 3SN6 alignment, a control beside each row"
+          ui={rowUi}
+          domSlots={ROW_DOM}
+          options={{
+            navigator: args.navigator,
+            rowsColor: args.rowsColor,
+            ui: args.ui,
+            render: { controlWidth: 40, headerWidth: 230 },
+          }}
+        />
+      </LoadedStructureLabelsContext.Provider>
       <section className={m.stage}>
         <div className={m.chooser}>
           <label>
@@ -237,6 +252,7 @@ function RowControlsMolstarView({ args }: { args: Args }) {
           </button>
           <span role="status">{status}</span>
         </div>
+        <div ref={host} className={m.canvas} aria-label="Mol* structure viewer" />
         {loadedStructureLabels.map((loadedLabel) => (
           <div key={loadedLabel} className={m.chooser}>
             <span>{loadedLabel}</span>
@@ -245,7 +261,6 @@ function RowControlsMolstarView({ args }: { args: Args }) {
             </button>
           </div>
         ))}
-        <div ref={host} className={m.canvas} aria-label="Mol* structure viewer" />
       </section>
     </PrismPage>
   );
