@@ -80,5 +80,5 @@ export function familyFromFasta(fasta: string, heightRows: number, o: { columns?
     } as never);
     members.points({ data: sites });
   }
-  return b.getDocument();
+  return { labels: labels, document: b.getDocument() };
 }

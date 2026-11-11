@@ -24,7 +24,6 @@ import { Tooltip } from './ui/index.js';
 import type { PluginContext } from '@molstar/plugin/context';
 import { mountPlugin, showMvs } from './support/seqstar-molstar-plugin.js';
 import { structureMvs } from './support/seqstar-mvs.js';
-import molstarFixture from '../../../../prism/viewer/src/sequence/molstar/_test/fixtures/structures/1c26.bcif?url';
 import m from './support/seqstar-molstar.module.css';
 
 const meta = {
@@ -35,7 +34,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<Args>;
 
-const TREE_FAMILY = familyFromFasta(fastaAlignment, 16, { columns: true, sites: true });
+const TREE_FAMILY = familyFromFasta(fastaAlignment, 16, { columns: true, sites: false });
 
 type RowToggleCallback = (on: boolean, dataRow: number) => void;
 
@@ -98,14 +97,21 @@ function structuresMvs(urls: readonly string[]) {
   };
 }
 
+function parseRowLabel(label: string): { pdbId: string; structureUrl: string; chainId: string } {
+  let [pdbId, chainId] = label.split('_');
+  pdbId = pdbId.toLowerCase();
+  const structureUrl = `https://www.ebi.ac.uk/pdbe/entry-files/download/${pdbId}.bcif`;
+  return { pdbId, structureUrl, chainId };
+}
+
 function RowControlsMolstarView({ args }: { args: Args }) {
   const host = useRef<HTMLDivElement>(null);
   const [plugin, setPlugin] = useState<PluginContext | null>(null);
-  const [url, setUrl] = useState(molstarFixture);
+  const [label, setLabel] = useState('3SN6_R');
   const [status, setStatus] = useState('Starting Mol*…');
   const [loading, setLoading] = useState(false);
-  const [loadedStructureUrls, setLoadedStructureUrls] = useState<string[]>([]);
-  const loadedStructureUrlsRef = useRef<string[]>([]);
+  const [loadedStructureLabels, setLoadedStructureLabels] = useState<string[]>([]);
+  const loadedStructureLabelsRef = useRef<string[]>([]);
 
   useEffect(() => {
     const el = host.current;
@@ -132,25 +138,26 @@ function RowControlsMolstarView({ args }: { args: Args }) {
     };
   }, []);
 
-  const loadStructure = async (structureUrl: string) => {
+  const loadStructure = async (label: string) => {
     if (!plugin || loading) return;
     setLoading(true);
     try {
-      if (loadedStructureUrlsRef.current.includes(structureUrl)) {
-        setStatus(`Already loaded ${structureUrl}.`);
+      if (loadedStructureLabelsRef.current.includes(label)) {
+        setStatus(`Already loaded ${label}.`);
         return;
       }
-      const nextUrls = [...loadedStructureUrlsRef.current, structureUrl];
-      setStatus(`Loading ${structureUrl}…`);
+      const nextLabels = [...loadedStructureLabelsRef.current, label];
+      const nextUrls = nextLabels.map((rowLabel) => parseRowLabel(rowLabel).structureUrl);
+      setStatus(`Loading ${label}…`);
       const state = structuresMvs(nextUrls);
       const structure = state ? await showMvs(plugin, state) : null;
       if (!structure) {
         setStatus('No structure was loaded.');
         return;
       }
-      loadedStructureUrlsRef.current = nextUrls;
-      setLoadedStructureUrls(nextUrls);
-      setStatus(`Loaded ${structureUrl}.`);
+      loadedStructureLabelsRef.current = nextLabels;
+      setLoadedStructureLabels(nextLabels);
+      setStatus(`Loaded ${label}.`);
     } catch (e) {
       setStatus(`Could not load structure: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -158,12 +165,13 @@ function RowControlsMolstarView({ args }: { args: Args }) {
     }
   };
 
-  const unloadStructure = async (structureUrl: string) => {
-    if (!plugin || loading || !loadedStructureUrlsRef.current.includes(structureUrl)) return;
+  const unloadStructure = async (label: string) => {
+    if (!plugin || loading || !loadedStructureLabelsRef.current.includes(label)) return;
     setLoading(true);
-    setStatus(`Unloading ${structureUrl}…`);
+    setStatus(`Unloading ${label}…`);
     try {
-      const nextUrls = loadedStructureUrlsRef.current.filter((loadedUrl) => loadedUrl !== structureUrl);
+      const nextLabels = loadedStructureLabelsRef.current.filter((loadedLabel) => loadedLabel !== label);
+      const nextUrls = nextLabels.map((rowLabel) => parseRowLabel(rowLabel).structureUrl);
       const state = structuresMvs(nextUrls);
       if (state) {
         await showMvs(plugin, state);
@@ -171,9 +179,9 @@ function RowControlsMolstarView({ args }: { args: Args }) {
         const structures = plugin.managers.structure.hierarchy.current.structures;
         await plugin.managers.structure.hierarchy.remove(structures, false);
       }
-      loadedStructureUrlsRef.current = nextUrls;
-      setLoadedStructureUrls(nextUrls);
-      setStatus(nextUrls.length ? `Unloaded ${structureUrl}.` : 'Ready. No structure is loaded.');
+      loadedStructureLabelsRef.current = nextLabels;
+      setLoadedStructureLabels(nextLabels);
+      setStatus(nextLabels.length ? `Unloaded ${label}.` : 'Ready. No structure is loaded.');
     } catch (e) {
       setStatus(`Could not unload structure: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -187,15 +195,19 @@ function RowControlsMolstarView({ args }: { args: Args }) {
       caption={
         <>
           The host's component in the `RowControl` slot, in the header's last 40 px (render prop `controlWidth`); only
-          the rows in view get one, and they follow the rows' scroll by a transform. The Mol* canvas starts empty; enter
-          a structure URL and load it after rendering.
+          the rows in view get one, and they follow the rows' scroll by a transform. Toggle a row's 3D control or enter
+          a row label (for example, 3SN6_R) to load its structure.
         </>
       }
     >
       <ViewerCard
-        doc={TREE_FAMILY}
+        doc={TREE_FAMILY.document}
         label="The 3SN6 alignment, a control beside each row"
-        ui={ROW_UI_WITH_CALLBACK((...row) => console.log('callback', ...row, TREE_FAMILY))}
+        ui={ROW_UI_WITH_CALLBACK((on, iRow) => {
+          const rowLabel = TREE_FAMILY.labels[iRow];
+          console.log('callbalck', on, iRow, rowLabel);
+          void (on ? loadStructure(rowLabel) : unloadStructure(rowLabel));
+        })}
         domSlots={ROW_DOM}
         options={{
           navigator: args.navigator,
@@ -207,17 +219,17 @@ function RowControlsMolstarView({ args }: { args: Args }) {
       <section className={m.stage}>
         <div className={m.chooser}>
           <label>
-            Structure URL <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} />
+            Row label <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} />
           </label>
-          <button type="button" disabled={!plugin || loading} onClick={() => void loadStructure(url)}>
+          <button type="button" disabled={!plugin || loading} onClick={() => void loadStructure(label)}>
             Load structure
           </button>
           <span role="status">{status}</span>
         </div>
-        {loadedStructureUrls.map((loadedUrl) => (
-          <div key={loadedUrl} className={m.chooser}>
-            <span>{loadedUrl}</span>
-            <button type="button" disabled={loading} onClick={() => void unloadStructure(loadedUrl)}>
+        {loadedStructureLabels.map((loadedLabel) => (
+          <div key={loadedLabel} className={m.chooser}>
+            <span>{loadedLabel}</span>
+            <button type="button" disabled={loading} onClick={() => void unloadStructure(loadedLabel)}>
               Unload structure
             </button>
           </div>
