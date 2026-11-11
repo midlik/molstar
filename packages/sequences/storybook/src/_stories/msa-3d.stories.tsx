@@ -92,7 +92,7 @@ function structuresMvs(labels: readonly string[]): MVSData_State | null {
     return structureMvs({
       url: structureUrl,
       format: structureFormat(structureUrl),
-      chains: [{ label_asym_id: chainId }],
+      chains: [{ auth_asym_id: chainId }],
       onlyChains: true,
     });
   });

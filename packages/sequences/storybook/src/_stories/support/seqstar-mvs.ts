@@ -20,10 +20,10 @@ import { MolScriptBuilder as MS } from '@molstar/query-language/language/builder
 export type MvsState = MVSData_State;
 
 /** A chain by MVS's selector fields; without `instance_id`, every copy. */
-export interface MvsChain {
-  readonly label_asym_id: string;
-  readonly instance_id?: string;
-}
+export type MvsChain = (
+  | { readonly label_asym_id: string; readonly auth_asym_id?: never }
+  | { readonly auth_asym_id: string; readonly label_asym_id?: never }
+) & { readonly instance_id?: string };
 /** An MVS annotation in the `residue_range` schema, object of arrays (MVS's compact form). */
 export interface MvsColorTable {
   readonly label_asym_id: string[];
