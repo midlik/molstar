@@ -13,7 +13,7 @@
 import { button, type DomPart, type RowProps as DomRowProps, setAttr } from '@molstar/seq-viewer/dom';
 import type { RowProps } from '@molstar/seq-viewer/react';
 import type { Meta, StoryObj } from './support/seqstar-story.js';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { familyFromFasta } from '../../../viewer/_test/families-msa-3d.js';
 import fastaAlignment from '../../../core/_test/fixtures/3SN6_align.fasta?raw';
 import { PrismPage } from './support/seqstar-prism.js';
@@ -48,8 +48,9 @@ function RowToggle({ dataRow, clickCallback }: RowProps & { clickCallback: RowTo
         aria-pressed={on}
         aria-label={`Show row ${dataRow + 1} in 3D`}
         onClick={() => {
-          setOn(!on);
-          clickCallback(!on, dataRow);
+          const newOn = !on;
+          setOn(newOn);
+          clickCallback(newOn, dataRow);
         }}
       >
         3D
@@ -59,7 +60,7 @@ function RowToggle({ dataRow, clickCallback }: RowProps & { clickCallback: RowTo
 }
 
 const ROW_UI_WITH_CALLBACK = (clickCallback: RowToggleCallback) => ({
-  components: { RowControl: (props: RowProps) => RowToggle({ ...props, clickCallback }) },
+  components: { RowControl: (props: RowProps) => <RowToggle {...props} clickCallback={clickCallback} /> },
 });
 
 const domRowToggle: DomPart<DomRowProps> = (host, _ctx, { dataRow }) => {
@@ -112,6 +113,8 @@ function RowControlsMolstarView({ args }: { args: Args }) {
   const [loading, setLoading] = useState(false);
   const [loadedStructureLabels, setLoadedStructureLabels] = useState<string[]>([]);
   const loadedStructureLabelsRef = useRef<string[]>([]);
+  const rowToggleCallbackRef = useRef<RowToggleCallback>(() => {});
+  const rowUi = useMemo(() => ROW_UI_WITH_CALLBACK((on, iRow) => rowToggleCallbackRef.current(on, iRow)), []);
 
   useEffect(() => {
     const el = host.current;
@@ -189,6 +192,11 @@ function RowControlsMolstarView({ args }: { args: Args }) {
     }
   };
 
+  rowToggleCallbackRef.current = (on, iRow) => {
+    const rowLabel = TREE_FAMILY.labels[iRow];
+    void (on ? loadStructure(rowLabel) : unloadStructure(rowLabel));
+  };
+
   return (
     <PrismPage
       title="Row controls and an empty Mol* viewer"
@@ -203,11 +211,7 @@ function RowControlsMolstarView({ args }: { args: Args }) {
       <ViewerCard
         doc={TREE_FAMILY.document}
         label="The 3SN6 alignment, a control beside each row"
-        ui={ROW_UI_WITH_CALLBACK((on, iRow) => {
-          const rowLabel = TREE_FAMILY.labels[iRow];
-          console.log('callbalck', on, iRow, rowLabel);
-          void (on ? loadStructure(rowLabel) : unloadStructure(rowLabel));
-        })}
+        ui={rowUi}
         domSlots={ROW_DOM}
         options={{
           navigator: args.navigator,
