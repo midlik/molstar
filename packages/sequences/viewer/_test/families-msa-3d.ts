@@ -14,15 +14,16 @@
 import { createSeqViewSpec } from '@molstar/seq-core/builder';
 import { Fasta } from '@molstar/seq-core/model';
 
-
 /** An aligned FASTA family, with a generated tree and optional synthetic member columns and sites. */
 export function familyFromFasta(fasta: string, heightRows: number, o: { columns?: boolean; sites?: boolean } = {}) {
   const parsed = Fasta.parse(fasta);
   const { input, issues } = Fasta.alignment(parsed.records, 'family', 'a3m');
+  console.log('input', input, 'issues', issues);
   const issue = [...parsed.issues, ...issues].find((i) => i.severity === 'error');
   if (issue) throw new Error(issue.message);
   const labels = input.labels ?? input.gapped.map((_, k) => `row-${k + 1}`);
   const n = input.gapped.length;
+  const lengths = input.gapped.map((row) => row.replace(/[-.]/g, '').length);
   if (!n) throw new Error('The FASTA alignment has no rows.');
   if (labels.length !== n || labels.some((label) => !label) || new Set(labels).size !== n) {
     throw new Error('The FASTA alignment must have unique, non-empty row labels.');
@@ -53,16 +54,14 @@ export function familyFromFasta(fasta: string, heightRows: number, o: { columns?
       target: aln,
       value: {
         row: Array.from({ length: n }, (_, k) => k),
-        length: Array.from({ length: n }, (_, k) => 28 + (k % 3)),
+        length: lengths,
       },
     })
     : null;
   members.rows(
     meta
       ? {
-        data_columns: [
-          { data: meta, field: 'length', label: 'Len', type: 'number' },
-        ],
+        data_columns: [{ data: meta, field: 'length', label: 'Len', type: 'number' }],
       }
       : {},
   );
