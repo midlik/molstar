@@ -25,6 +25,7 @@ import type { PluginContext } from '@molstar/plugin/context';
 import { mountPlugin, showMvs } from './support/seqstar-molstar-plugin.js';
 import { structureMvs } from './support/seqstar-mvs.js';
 import m from './support/seqstar-molstar.module.css';
+import type { MVSData_State } from '@molstar/mvs-builder/mvs-data';
 
 const meta = {
   title: 'Seq*/Views and layouts/MSA with 3D',
@@ -85,8 +86,16 @@ function structureFormat(url: string): 'bcif' | 'mmcif' | 'pdb' {
   throw new Error('Use a .bcif, .cif, .mmcif, or .pdb structure URL.');
 }
 
-function structuresMvs(urls: readonly string[]) {
-  const states = urls.map((url) => structureMvs({ url, format: structureFormat(url) }));
+function structuresMvs(labels: readonly string[]): MVSData_State | null {
+  const states = labels.map((label) => {
+    const { structureUrl, chainId } = parseRowLabel(label);
+    return structureMvs({
+      url: structureUrl,
+      format: structureFormat(structureUrl),
+      chains: [{ label_asym_id: chainId }],
+      onlyChains: true,
+    });
+  });
   const first = states[0];
   if (!first) return null;
   return {
@@ -113,7 +122,7 @@ function RowControlsMolstarView({ args }: { args: Args }) {
   const [loading, setLoading] = useState(false);
   const [loadedStructureLabels, setLoadedStructureLabels] = useState<string[]>([]);
   const loadedStructureLabelsRef = useRef<string[]>([]);
-  const rowToggleCallbackRef = useRef<RowToggleCallback>(() => {});
+  const rowToggleCallbackRef = useRef<RowToggleCallback>(() => { });
   const rowUi = useMemo(() => ROW_UI_WITH_CALLBACK((on, iRow) => rowToggleCallbackRef.current(on, iRow)), []);
 
   useEffect(() => {
@@ -150,9 +159,8 @@ function RowControlsMolstarView({ args }: { args: Args }) {
         return;
       }
       const nextLabels = [...loadedStructureLabelsRef.current, label];
-      const nextUrls = nextLabels.map((rowLabel) => parseRowLabel(rowLabel).structureUrl);
       setStatus(`Loading ${label}…`);
-      const state = structuresMvs(nextUrls);
+      const state = structuresMvs(nextLabels);
       const structure = state ? await showMvs(plugin, state) : null;
       if (!structure) {
         setStatus('No structure was loaded.');
@@ -174,8 +182,7 @@ function RowControlsMolstarView({ args }: { args: Args }) {
     setStatus(`Unloading ${label}…`);
     try {
       const nextLabels = loadedStructureLabelsRef.current.filter((loadedLabel) => loadedLabel !== label);
-      const nextUrls = nextLabels.map((rowLabel) => parseRowLabel(rowLabel).structureUrl);
-      const state = structuresMvs(nextUrls);
+      const state = structuresMvs(nextLabels);
       if (state) {
         await showMvs(plugin, state);
       } else {

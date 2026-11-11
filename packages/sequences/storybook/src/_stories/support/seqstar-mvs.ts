@@ -67,6 +67,8 @@ export interface StructureScene {
   readonly assembly?: string | null;
   /** The chains shown in front, the others faint; null: all in front. */
   readonly chains?: readonly MvsChain[] | null;
+  /** Draw only `chains`, without the other chains, ligands, or ions. */
+  readonly onlyChains?: boolean;
   /** Color tables in order: a later one wins. */
   readonly colors?: readonly MvsColorTable[];
   /** Residues shown as ball and stick too, each table's in its colors (a site track's: PTMs, binding sites). */
@@ -135,14 +137,14 @@ export function structureMvs(scene: StructureScene): MVSData_State {
     if (MvsColorTable.size(t) === 0) continue;
     repr.colorFromUri({ uri: MvsColorTable.dataUri(t), format: 'json', schema: 'residue_range' });
   }
-  if (chains) {
+  if (chains && !scene.onlyChains) {
     s.component({ selector: 'polymer' })
       .representation({ type: d.representation ?? 'cartoon' })
       .color({ color: '#e0e0e0' })
       .opacity({ opacity: d.faint ?? 0.25 });
     if (scene.focus !== false) front.focus({});
   }
-  if (d.ligands !== false) {
+  if (!scene.onlyChains && d.ligands !== false) {
     const comps = scene.ligandComps;
     if (!comps || comps.length > 0) {
       s.component({ selector: comps ? ligandsOf(comps) : 'ligand' })
@@ -151,14 +153,14 @@ export function structureMvs(scene: StructureScene): MVSData_State {
     }
     s.component({ selector: 'ion' }).representation({ type: 'ball_and_stick' });
   }
-  for (const t of scene.sticks ?? []) {
+  for (const t of scene.onlyChains ? [] : (scene.sticks ?? [])) {
     if (MvsColorTable.size(t) === 0) continue;
     const uri = MvsColorTable.dataUri(t);
     s.componentFromUri({ uri, format: 'json', schema: 'residue_range' })
       .representation({ type: 'ball_and_stick' })
       .colorFromUri({ uri, format: 'json', schema: 'residue_range' });
   }
-  const sel = scene.selection;
+  const sel = scene.onlyChains ? null : scene.selection;
   if (sel && MvsColorTable.size(sel.residues) > 0) {
     const c = s.component({ selector: rows(sel.residues) });
     c.representation({ type: 'ball_and_stick' }).color({ color: (sel.residues.color[0] ?? '#e8a33d') as ColorT });
