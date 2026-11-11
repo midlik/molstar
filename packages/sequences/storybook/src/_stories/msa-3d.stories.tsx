@@ -14,7 +14,7 @@ import { button, type DomPart, type RowProps as DomRowProps, setAttr } from '@mo
 import type { RowProps } from '@molstar/seq-viewer/react';
 import type { Meta, StoryObj } from './support/seqstar-story.js';
 import { useEffect, useRef, useState } from 'react';
-import { familyWithFastaTree } from '../../../viewer/_test/families.js';
+import { familyFromFasta } from '../../../viewer/_test/families-msa-3d.js';
 import fastaAlignment from '../../../core/_test/fixtures/3SN6_align.fasta?raw';
 import { PrismPage } from './support/seqstar-prism.js';
 import { ViewerCard } from './support/seqstar-viewer.js';
@@ -35,7 +35,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<Args>;
 
-const TREE_FAMILY = familyWithFastaTree(fastaAlignment, 16, { columns: true, sites: true });
+const TREE_FAMILY = familyFromFasta(fastaAlignment, 16, { columns: true, sites: true });
 
 type RowToggleCallback = (on: boolean, dataRow: number) => void;
 
