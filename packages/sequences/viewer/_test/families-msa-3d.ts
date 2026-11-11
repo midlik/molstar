@@ -18,7 +18,7 @@ import { Fasta } from '@molstar/seq-core/model';
 /** An aligned FASTA family, with a generated tree and optional synthetic member columns and sites. */
 export function familyFromFasta(fasta: string, heightRows: number, o: { columns?: boolean; sites?: boolean } = {}) {
   const parsed = Fasta.parse(fasta);
-  const { input, issues } = Fasta.alignment(parsed.records, 'family', 'aligned');
+  const { input, issues } = Fasta.alignment(parsed.records, 'family', 'a3m');
   const issue = [...parsed.issues, ...issues].find((i) => i.severity === 'error');
   if (issue) throw new Error(issue.message);
   const labels = input.labels ?? input.gapped.map((_, k) => `row-${k + 1}`);

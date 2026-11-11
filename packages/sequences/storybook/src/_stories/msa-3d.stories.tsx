@@ -15,7 +15,7 @@ import type { RowProps } from '@molstar/seq-viewer/react';
 import type { Meta, StoryObj } from './support/seqstar-story.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { familyFromFasta } from '../../../viewer/_test/families-msa-3d.js';
-import fastaAlignment from '../../../core/_test/fixtures/3SN6_align.fasta?raw';
+import fastaAlignment from '../../../core/_test/fixtures/3SN6_align-fixed.fasta?raw';
 import { PrismPage } from './support/seqstar-prism.js';
 import { ViewerCard } from './support/seqstar-viewer.js';
 import s from './support/seqstar-viewer.module.css';
