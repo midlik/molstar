@@ -4,8 +4,8 @@
  * Developed in collaboration with Anyfold <https://anyfold.ai/>
  *
  * @author David Sehnal <david.sehnal@gmail.com>
+ * @author Adam Midlik <midlik@gmail.com>
  */
-
 
 // pnpm build
 // pnpm -C storybook storybook
@@ -14,7 +14,8 @@ import { button, type DomPart, type RowProps as DomRowProps, setAttr } from '@mo
 import type { RowProps } from '@molstar/seq-viewer/react';
 import type { Meta, StoryObj } from './support/seqstar-story.js';
 import { useEffect, useRef, useState } from 'react';
-import { familyWithTree } from '../../../viewer/_test/families.js';
+import { familyWithFastaTree } from '../../../viewer/_test/families.js';
+import fastaAlignment from '../../../core/_test/fixtures/3SN6_align.fasta?raw';
 import { PrismPage } from './support/seqstar-prism.js';
 import { ViewerCard } from './support/seqstar-viewer.js';
 import s from './support/seqstar-viewer.module.css';
@@ -34,7 +35,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<Args>;
 
-const TREE_FAMILY = familyWithTree(160, 16, { columns: true, sites: true });
+const TREE_FAMILY = familyWithFastaTree(fastaAlignment, 16, { columns: true, sites: true });
 
 type RowToggleCallback = (on: boolean, dataRow: number) => void;
 
@@ -193,7 +194,7 @@ function RowControlsMolstarView({ args }: { args: Args }) {
     >
       <ViewerCard
         doc={TREE_FAMILY}
-        label="A family of 160 rows, a control beside each"
+        label="The 3SN6 alignment, a control beside each row"
         ui={ROW_UI_WITH_CALLBACK((...row) => console.log('callback', ...row, TREE_FAMILY))}
         domSlots={ROW_DOM}
         options={{

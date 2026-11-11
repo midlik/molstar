@@ -4,6 +4,7 @@
  * Developed in collaboration with Anyfold <https://anyfold.ai/>
  *
  * @author David Sehnal <david.sehnal@gmail.com>
+ * @author Adam Midlik <midlik@gmail.com>
  */
 
 // A synthetic protein family for vertical scrolling, the overview and row zoom (synthetic: not real sequences): the
@@ -12,6 +13,7 @@
 
 import { createSeqViewSpec } from '@molstar/seq-core/builder';
 import type { SeqViewSpecDoc } from '@molstar/seq-core/format';
+import { Fasta } from '@molstar/seq-core/model';
 
 const SEEDS = [
   'WYFGKITRRESERLLLNAENPRGTFLVRES',
@@ -80,6 +82,76 @@ export function familyWithTree(n: number, heightRows: number, o: { columns?: boo
   const members = v.track({ label: 'Members' });
   const meta = o.columns
     ? b.data.annotation({
+    ref: 'meta',
+    geometry: 'rows',
+    target: aln,
+    value: {
+      row: Array.from({ length: n }, (_, k) => k),
+      length: Array.from({ length: n }, (_, k) => 28 + (k % 3)),
+      identity: Array.from({ length: n }, (_, k) => ((k * 37) % 100) / 100),
+      species: Array.from({ length: n }, (_, k) => `Species ${k % 7}`),
+      clade: Array.from({ length: n }, (_, k) => `clade ${k % 4}`),
+    },
+    })
+    : null;
+  members.rows(
+    meta
+      ? {
+      data_columns: [
+        { data: meta, field: 'length', label: 'Len', type: 'number' },
+        { data: meta, field: 'identity', label: 'Id.', type: 'fraction' },
+        { data: meta, field: 'species', label: 'Species', type: 'text' },
+        { data: meta, field: 'clade', label: 'Clade', type: 'category' },
+      ],
+    }
+      : {},
+  );
+  if (o.sites) {
+    const sites = b.data.annotation({
+      ref: 'sites',
+      geometry: 'ranges',
+      target: aln,
+      numbering: 'ordinal',
+      value: { target: [aln.row(0), aln.row(5)], start: [3, 10], category: ['Active site', 'Binding site'] },
+    } as never);
+    members.points({ data: sites });
+  }
+  return b.getDocument();
+}
+
+/** An aligned FASTA family, with a generated tree and optional synthetic member columns and sites. */
+export function familyWithFastaTree(fasta: string, heightRows: number, o: { columns?: boolean; sites?: boolean } = {}) {
+  const parsed = Fasta.parse(fasta);
+  const { input, issues } = Fasta.alignment(parsed.records, 'family', 'aligned');
+  const issue = [...parsed.issues, ...issues].find((i) => i.severity === 'error');
+  if (issue) throw new Error(issue.message);
+  const labels = input.labels ?? input.gapped.map((_, k) => `row-${k + 1}`);
+  const n = input.gapped.length;
+  if (!n) throw new Error('The FASTA alignment has no rows.');
+  if (labels.length !== n || labels.some((label) => !label) || new Set(labels).size !== n) {
+    throw new Error('The FASTA alignment must have unique, non-empty row labels.');
+  }
+
+  const clade = (ks: number[], depth: number): string =>
+    ks.length === 1
+      ? `'${labels[ks[0]].replaceAll("'", "''")}':${(0.05 + (ks[0] % 3) * 0.03).toFixed(2)}`
+      : `(${clade(ks.slice(0, ks.length >> 1), depth + 1)},${clade(ks.slice(ks.length >> 1), depth + 1)}):${(0.3 / (depth + 1)).toFixed(2)}`;
+  const columnCount = Math.max(...input.gapped.map((row) => row.length));
+  // The fixture's records differ by two terminal columns; fill the short rows with terminal gaps.
+  const gapped = input.gapped.map((row) => row.padEnd(columnCount, '-'));
+  const newick = `${clade(
+    Array.from({ length: n }, (_, k) => k),
+    0,
+  )};`;
+  const b = createSeqViewSpec({ title: 'A FASTA family alignment with a synthetic tree' });
+  const aln = b.data.alignment({ ref: 'family', value: gapped, labels, flavor: 'aligned' });
+  aln.tree({ source: { value: newick, format: 'newick' } });
+  const v = b.view({ ref: 'fam', label: 'Family', style: 'msa', height: 'box', height_rows: heightRows });
+  v.block({ alignment: aln });
+  v.track({ label: '' }).ruler();
+  const members = v.track({ label: 'Members' });
+  const meta = o.columns
+    ? b.data.annotation({
         ref: 'meta',
         geometry: 'rows',
         target: aln,
@@ -110,7 +182,11 @@ export function familyWithTree(n: number, heightRows: number, o: { columns?: boo
       geometry: 'ranges',
       target: aln,
       numbering: 'ordinal',
-      value: { target: [aln.row(0), aln.row(5)], start: [3, 10], category: ['Active site', 'Binding site'] },
+      value: {
+        target: [aln.row(0), aln.row(Math.min(5, n - 1))],
+        start: [3, 10],
+        category: ['Active site', 'Binding site'],
+      },
     } as never);
     members.points({ data: sites });
   }
