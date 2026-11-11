@@ -211,7 +211,7 @@ const caseOf = (name: string, make: () => SeqViewSpecDoc): SmokeCase => ({
 });
 const format =
   (name: string): SmokeStory['cases'] =>
-  () => [caseOf(name, CASES[name])];
+    () => [caseOf(name, CASES[name])];
 const FORMAT_CASES = ['case1', 'case2', 'case3', 'case4', 'case5', 'case6', 'case7', 'case8', 'case9'] as const;
 
 // ---- Pieces used by several stories ----
@@ -232,9 +232,9 @@ export const SMOKE: readonly SmokeStory[] = [
       cases:
         c === 'case1'
           ? () => [
-              caseOf(c, CASES.case1),
-              { ...caseOf(c, () => textStyled(CASES.case1(), 'compact')), label: 'case1, compact text' },
-            ]
+            caseOf(c, CASES.case1),
+            { ...caseOf(c, () => textStyled(CASES.case1(), 'compact')), label: 'case1, compact text' },
+          ]
           : format(c),
     }),
   ),
@@ -393,6 +393,7 @@ export const SMOKE: readonly SmokeStory[] = [
     ],
   },
   { key: 'alignments.stories.tsx#RowControls', same: 'alignments.stories.tsx#FamilyTree' } as SmokeStory,
+  { key: 'msa-3d.stories.tsx#MsaWith3D', same: 'alignments.stories.tsx#FamilyTree' } as SmokeStory,
   {
     key: 'large-documents.stories.tsx#LargeAlignment',
     cases: () => [{ label: '10,000 x 300', doc: largeAlignment(10_000, 300) }],
